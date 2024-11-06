@@ -1,27 +1,15 @@
 import numpy as np
-import h5py
-from cr39py.util.baseobject import BaseObject, identify_object
+
+from cr39py.core.exportable_class import ExportableClassMixin
 
 
-__all__ = [
-    "Cut",
-]
-
-
-class Cut(BaseObject):
+class Cut(ExportableClassMixin):
     """
     A cut is series of upper and lower bounds on tracks that should be
     excluded.
-
-    Parameters
-    ----------
-
-    grp : h5py.Group or string file path
-        An h5py Group or file path to an h5py file from which to
-        load the cut
-
-
     """
+
+    _exportable_attributes = ["bounds"]
 
     defaults = {
         "xmin": -1e6,
@@ -64,11 +52,6 @@ class Cut(BaseObject):
         emax: float = None,
     ):
 
-        super().__init__()
-
-        _exportable_attributes = ["bounds"]
-        self._exportable_attributes += _exportable_attributes
-
         self.bounds = {
             "xmin": xmin,
             "xmax": xmax,
@@ -81,6 +64,22 @@ class Cut(BaseObject):
             "emin": emin,
             "emax": emax,
         }
+
+    def __eq__(self, other):
+        if not isinstance(other, Cut):
+            return False
+
+        for key in self.bounds.keys():
+            if self.bounds[key] != other.bounds[key]:
+                return False
+
+        return True
+
+    def __hash__(self):
+        s = ""
+        for val in self.bounds.items():
+            s += f"{val}_"
+        return hash(s)
 
     def __getattr__(self, key):
 
@@ -120,6 +119,32 @@ class Cut(BaseObject):
             return "[Empty cut]"
         else:
             return s
+
+    def update(self, **bounds):
+        """
+        Updates based off of provided keywords, e.g.
+
+        cut.update(xmin=-1, cmax=20)
+        """
+        for key, val in bounds.items():
+            _key = key.lower()
+
+            # Raise an exception if an invalid key is provided
+            if _key not in self.bounds:
+                raise KeyError(f"Unrecognized key for cut bounds: {key}")
+
+            # If the string `none` is provided as a value, encode that as
+            # python None
+            # This is used in the interface for Scan's CLI
+            if val is None:
+                self.bounds[_key] = None
+
+            elif isinstance(val, str) and val.strip().lower() == "none":
+                self.bounds[_key] = None
+
+            # Otherwise update the bounds value with the new value
+            else:
+                self.bounds[_key] = float(val)
 
     def test(self, trackdata):
         """
