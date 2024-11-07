@@ -3,6 +3,7 @@ import os
 from functools import cached_property
 from pathlib import Path
 
+import astropy.units as u
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +11,6 @@ from fast_histogram import histogram2d
 
 from cr39py.cli import _cli_input
 from cr39py.core.exportable_class import ExportableClassMixin
-from cr39py.core.units import unit_registry as u
 from cr39py.cpsa import read_cpsa
 from cr39py.cut import Cut
 from cr39py.response import track_energy

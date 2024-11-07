@@ -1,10 +1,10 @@
 from pathlib import Path
 
+import astropy.units as u
 import numpy as np
 import pytest
 
 from cr39py.core.exportable_class import ExportableClassMixin, saveable_class
-from cr39py.core.units import unit_registry as u
 
 
 @saveable_class(attributes=["a", "b"])

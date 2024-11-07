@@ -4,10 +4,9 @@ import inspect
 from pathlib import Path
 from typing import Callable
 
+import astropy.units as u
 import h5py
 import numpy as np
-
-from cr39py.core.units import unit_registry as u
 
 
 class ExportableClassMixin:
@@ -183,7 +182,7 @@ class ExportableClassMixin:
 
         return obj
 
-    def _read_hdf5_entry(self, entry: [h5py.Group, h5py.Dataset]):
+    def _read_hdf5_entry(self, entry):
         """
         Reads and returns entry from an hdf5 file.
         """

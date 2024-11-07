@@ -2,9 +2,8 @@
 Detector response functions for CR39
 """
 
+import astropy.units as u
 import numpy as np
-
-from cr39py.core.units import unit_registry as u
 
 __all__ = ["track_energy", "track_diameter"]
 
