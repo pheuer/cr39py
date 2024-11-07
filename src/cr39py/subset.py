@@ -198,13 +198,12 @@ class Subset(ExportableClassMixin):
         --------
 
         Create a cut, then add it to the subset
-        .. code-block:: python
-            cut = Cut(cmin=30)
-            subset.add_cut(cut)
+
+        >>> cut = Cut(cmin=30)
+        >>> subset.add_cut(cut)
 
         Or create a new cut on the subset automatically.
-        .. code-block:: python
-            subset.add_cut(cmin=30)
+        >>> subset.add_cut(cmin=30)
 
         """
 
