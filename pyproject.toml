@@ -28,7 +28,7 @@ dependencies = [
     "h5py >= 3.8.0",
     "matplotlib >= 3.7.0",
     "numpy >= 1.24.0",
-    'pint>0.24.3',
+    'pint>=0.24.3',
     "flexparser<0.4", # Required by pint
     "setuptools >= 66.0.0",
   ]
