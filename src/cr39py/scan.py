@@ -13,7 +13,7 @@ from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.core.units import unit_registry as u
 from cr39py.cpsa import read_cpsa
 from cr39py.cut import Cut
-from cr39py.response import track_energy
+from cr39py.response import TwoParameterModel
 from cr39py.subset import Subset
 
 
@@ -489,7 +489,8 @@ class Scan(ExportableClassMixin):
         else:  # pragma: no cover
             raise ValueError(f"Statistic keyword not recognized: {statistic}")
 
-        energy = track_energy(d, particle, self.etch_time)
+        model = TwoParameterModel()
+        energy = model.track_energy(d, particle, self.etch_time.m_as(u.min))
 
         return energy
 
