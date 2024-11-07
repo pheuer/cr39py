@@ -3,8 +3,9 @@
 import os
 import sys
 
+# print(os.path.abspath(".."))
 # Tell autodoc where to find the source code
-sys.path.insert(0, os.path.abspath("../cr39py"))
+sys.path.insert(0, os.path.abspath(".."))
 
 
 # -- Project information
@@ -24,7 +25,12 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
 ]
+
+autoapi_dirs = ["../src/cr39py"]
+autoapi_type = ["python"]
+
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
