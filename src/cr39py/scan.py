@@ -238,7 +238,9 @@ class Scan(ExportableClassMixin):
 
             # Create the new axis
             axes[ax] = (
-                np.arange(minval, maxval, self.binsize[ax].m_as(self.axes_units[ax]))
+                np.arange(
+                    minval, maxval, self.binsize[ax].to(self.axes_units[ax]).value
+                )
                 * self.axes_units[ax]
             )
         return axes
@@ -534,8 +536,8 @@ class Scan(ExportableClassMixin):
             tracks = self.selected_tracks
 
         _axes = self.axes
-        ax0 = _axes[axes[0]].m
-        ax1 = _axes[axes[1]].m
+        ax0 = _axes[axes[0]].value
+        ax1 = _axes[axes[1]].value
 
         # If creating a histogram like the X,Y,D plots
         if len(axes) == 3:

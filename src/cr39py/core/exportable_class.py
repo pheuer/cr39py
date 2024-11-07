@@ -96,13 +96,7 @@ class ExportableClassMixin:
         elif isinstance(obj, u.Quantity):
             group[name] = obj.m
             group[name].attrs["unit"] = str(obj.u)
-            group[name].attrs["type"] = "pint.Quantity"
-
-        elif isinstance(obj, u.Measurement):
-            group[name] = obj.m.n
-            group[name].attrs["error"] = obj.m.s
-            group[name].attrs["unit"] = str(obj.u)
-            group[name].attrs["type"] = "pint.Measurement"
+            group[name].attrs["type"] = "u.Quantity"
 
         elif isinstance(obj, (list, tuple)):
             list_group = group.require_group(name)
@@ -228,15 +222,8 @@ class ExportableClassMixin:
             else:
                 return entry[...].astype(np_dtype)
 
-        elif dtype == "pint.Quantity":
+        elif dtype == "u.Quantity":
             return u.Quantity(entry[...], entry.attrs["unit"])
-
-        elif dtype == "pint.Measurement":
-            value = entry[...]
-            unit = entry.attrs["unit"]
-            error = entry.attrs["error"]
-
-            return u.Measurement(value, error, unit)
 
         else:
             raise ValueError(f"Unrecognized dtype {dtype} for entry {entry}")

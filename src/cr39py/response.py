@@ -28,7 +28,7 @@ def track_energy(diameter, particle, etch_time, vB=2.66, k=0.8, n=1.2):
     :param n: the other response parameter in the two-parameter model
     """
 
-    etch_time = etch_time.m_as(u.hour)
+    etch_time = etch_time.to(u.hour).value
 
     a, z = _particle(particle)
 
@@ -48,10 +48,10 @@ def track_diameter(energy, particle, etch_time, vB=2.66, k=0.8, n=1.2):
     """
     a, z = _particle(particle)
 
-    energy = energy.m_as(u.MeV)
+    energy = energy.to(u.MeV).value
 
     return np.where(
         energy > 0,
-        2 * etch_time.to(u.hr).m * vB / (1 + k * (energy / (z**2 * a)) ** n),
+        2 * etch_time.to(u.hr).value * vB / (1 + k * (energy / (z**2 * a)) ** n),
         np.nan,
     )
