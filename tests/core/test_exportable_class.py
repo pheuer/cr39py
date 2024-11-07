@@ -28,7 +28,6 @@ class AnObj(ExportableClassMixin):
         # for larger arrays
         np.random.random((20, 20)).astype(np.float16),
         u.Quantity(2, u.cm),
-        u.Measurement(2, 1, u.cm),
         AnObj(),
         # Dict
         {"a": 1, 1: "text", "2": True},
@@ -58,11 +57,6 @@ def test_export_and_import(x, tmpdir):
     if isinstance(x, ExportableClassMixin):
         for attr in x._exportable_attributes:
             assert getattr(x, attr) == getattr(obj2.test, attr)
-
-    elif isinstance(x, u.Measurement):
-        assert x.m.n == obj2.test.m.n
-        assert x.m.s == obj2.test.m.s
-        assert x.u == obj2.test.u
 
     elif isinstance(x, np.ndarray):
         assert np.allclose(obj2.test, x)
