@@ -19,6 +19,8 @@ version = "2024.11"
 
 # -- General configuration
 
+default_role = "py:obj"
+
 extensions = [
     "sphinx.ext.duration",
     "sphinx.ext.doctest",

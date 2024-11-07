@@ -141,9 +141,13 @@ class Cut(ExportableClassMixin):
     def __getattr__(self, key):
         """Access bounds of the cut.
 
-        Allows bounds to be accessed as attributes, e.g.
+        Allows bounds to be accessed as attributes
 
-        ``cut.dmax = cut.bounds['dmax]``
+        Examples
+        --------
+
+        >>> cut.dmax = cut.bounds['dmax]
+
         """
 
         if key in self.bounds.keys():
@@ -189,7 +193,8 @@ class Cut(ExportableClassMixin):
 
         Examples
         --------
-        ``cut.update(xmin=-1, cmax=20)``
+
+        >>> cut.update(xmin=-1, cmax=20)
         """
         for key, val in bounds.items():
             _key = key.lower()
