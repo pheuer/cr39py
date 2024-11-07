@@ -1,0 +1,6 @@
+fast_histogram
+h5py >= 3.8.0
+matplotlib >= 3.7.0
+numpy >= 1.24.0
+pint
+setuptools >= 66.0.0
