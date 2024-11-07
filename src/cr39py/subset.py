@@ -200,7 +200,8 @@ class Subset(ExportableClassMixin):
         >>> cut = Cut(cmin=30)
         >>> subset.add_cut(cut)
 
-        Or create a new cut on the subset automatically.
+        Or create a new cut on the subset automatically
+
         >>> subset.add_cut(cmin=30)
 
         """
@@ -240,7 +241,7 @@ class Subset(ExportableClassMixin):
         ----------
         i : int
             Index of the Cut to replace.
-        cut : `cr39py.cut.Cut`
+        cut : `~cr39py.cut.Cut`
             New cut to insert.
         """
         if i > len(self.cuts) - 1:
