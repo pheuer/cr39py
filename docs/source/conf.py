@@ -4,7 +4,7 @@ import os
 import sys
 
 # Tell autodoc where to find the source code
-sys.path.insert(0, os.path.abspath("../cr39py/src/cr39py"))
+sys.path.insert(0, os.path.abspath("../cr39py"))
 
 
 # -- Project information
