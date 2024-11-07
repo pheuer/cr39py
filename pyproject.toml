@@ -25,11 +25,12 @@ requires-python = ">=3.11"
 
 dependencies = [
     "fast_histogram",
+    "flexparser<0.4", # Pin required by pint
     "h5py >= 3.8.0",
     "matplotlib >= 3.7.0",
     "numpy >= 1.24.0",
     'pint>=0.24.3',
-    "flexparser<0.4", # Required by pint
+    "tqdm >= 4.65.0",
     "setuptools >= 66.0.0",
   ]
 

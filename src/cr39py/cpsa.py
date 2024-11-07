@@ -8,6 +8,7 @@ from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 
 
 def read_cpsa(path: Path):
@@ -15,38 +16,33 @@ def read_cpsa(path: Path):
 
     Parameters
     ----------
-    path : str, Path
+    path : `~pathlib.Path`
         Path to the CPSA file.
 
     Returns
     -------
-
     tracks: np.ndarray
         Numpy array of tracks.
-
 
     Notes
     -----
     Adapted from code written by Hans Rinderknecht
 
     """
-
-    print("Reading .cpsa file")
-
     with open(path, "rb") as file:
 
         # First read in the header values
-        print("Reading CPSA header")
+        print("***CPSA header***")
         version = -np.fromfile(file, count=1, dtype="int32")[0]
-        print(f"Version: {version}")
+        print(f"...Version: {version}")
 
         # Number of microscope frames in the x and y directions of the scan
         # respectively
         nx = np.fromfile(file, count=1, dtype="int32")[0]
         ny = np.fromfile(file, count=1, dtype="int32")[0]
         nframes = nx * ny
-        print(f"nx, ny microscope bins: {nx}, {ny}")
-        print(f"Nframes: {nframes}")
+        print(f"...nx, ny microscope bins: {nx}, {ny}")
+        print(f"...Nframes: {nframes}")
 
         # h[3] is "Nbins" which is not used except with legacy data\
         np.fromfile(file, count=1, dtype="int32")[0]
@@ -54,7 +50,7 @@ def read_cpsa(path: Path):
         # Pixel size in microns: note that this is stored as a single
         # so needs to be read as such
         pix_size = np.fromfile(file, count=1, dtype="single")[0]
-        print(f"Pixel size: {pix_size:.1e} um")
+        print(f"...Pixel size: {pix_size:.1e} um")
 
         # h[5] is "ppb" which is not used except with legacy data
         np.fromfile(file, count=1, dtype="single")[0]
@@ -62,20 +58,19 @@ def read_cpsa(path: Path):
         # Thresholds for border, contrast, eccentricity,
         # and number of eccentricity moments
         threshold = np.fromfile(file, count=4, dtype="int32")[0]
-        print(f"Threshold: {threshold}")
+        print(f"...Threshold: {threshold}")
 
         # Number of utilized camera image pixels in the x and y directions
         NFPx = np.fromfile(file, count=1, dtype="int32")[0]
         NFPy = np.fromfile(file, count=1, dtype="int32")[0]
-        print(f"Untilized camera image px NFPx, NFPy: {NFPx}, {NFPy}")
+        print(f"...Untilized camera image px NFPx, NFPy: {NFPx}, {NFPy}")
 
         # Microscope frame size in microns
         fx = pix_size * NFPx
         fy = pix_size * NFPy
-        print(f"Microscope frame size fx, fy: {fx:.1e} um, {fy:.1e} um")
+        print(f"...Microscope frame size fx, fy: {fx:.1e} um, {fy:.1e} um")
 
         # Read the full datafile as int32 and separate out the track info
-        print("Reading CPSA data")
 
         # Represents metadata from a single frame of cr39
         # used when reading CPSA files
@@ -98,10 +93,10 @@ def read_cpsa(path: Path):
         # will be the x and y axes of the dataset
         xax = np.zeros(nx)
         yax = np.zeros(ny)
-        for i in range(nframes):
-            if i % 5000 == 4999:
-                print(f"Reading frame {i+1}/{nframes}")
 
+        pbar = tqdm(range(nframes))
+        pbar.set_description("Reading CPSA file")
+        for i in pbar:
             # Read the bin header
             h = np.fromfile(file, count=10, dtype="int32")
 
@@ -186,9 +181,6 @@ def read_cpsa(path: Path):
                 t[:, 6] = fh.zpos * pix_size * 1e-2
 
             frame_tracks.append(t)
-    print("Done Reading CPSA data")
-
-    print("Processing the tracks")
 
     # The order of the quantities in track data is:
     # 0) x position (cm))
