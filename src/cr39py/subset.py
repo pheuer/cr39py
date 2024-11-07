@@ -45,6 +45,7 @@ class Subset(ExportableClassMixin):
 
         self.cuts = []
         self.ndslices = ndslices
+        self.current_dslice_index = 0
 
         if domain is not None:
             self.set_domain(domain)
