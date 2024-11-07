@@ -22,7 +22,7 @@ jobs:
 
         - name: Tests Python 3.12 - Ubuntu
           os: ubuntu-latest
-          python-version: '3.13'
+          python-version: '3.12'
 
 
 

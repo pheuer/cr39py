@@ -1,0 +1,43 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools >= 61.2.0",
+  "setuptools-scm >= 6.3.2",
+  "wheel >= 0.37.0",
+]
+
+[project]
+name = "cr39py"
+version = "2024.11"
+authors = [
+  {name = "Peter Heuer"},
+  ]
+description = "Python package for analyzing CR39 particle track data"
+readme = "README.md"
+license = {file = "LICENSE.md"}
+keywords = [
+  "CR39",
+]
+
+
+requires-python = ">=3.11"
+
+
+dependencies = [
+    "fast_histogram",
+    "h5py >= 3.8.0",
+    "matplotlib >= 3.7.0",
+    "numpy >= 1.24.0",
+    'pint>=0.24.3',
+    "flexparser<0.4", # Required by pint
+    "setuptools >= 66.0.0",
+  ]
+
+
+[project.optional-dependencies]
+tests = [
+  "pytest >= 8.3.1",
+  ]
+
+[tool.setuptools.packages.find]
+where = ["src"]

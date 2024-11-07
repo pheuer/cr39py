@@ -1,12 +1,6 @@
 """
-Utilities for making command line interfaces (CLIs)
-
-@author: pvheu
+Utilities for taking user input
 """
-
-__all__ = [
-    "_cli_input",
-]
 
 
 def _cli_input(
@@ -131,8 +125,3 @@ def _cli_input(
 
         else:
             raise ValueError("Invalid Mode")
-
-
-if __name__ == "__main__":
-    x = _cli_input(mode="alpha-integer list")
-    print(x)
