@@ -37,8 +37,8 @@ class Scan(ExportableClassMixin):
         "X": u.cm,
         "Y": u.cm,
         "D": u.um,
-        "C": u.dimensionless,
-        "E": u.dimensionless,
+        "C": u.dimensionless_unscaled,
+        "E": u.dimensionless_unscaled,
         "Z": u.um,
     }
 
