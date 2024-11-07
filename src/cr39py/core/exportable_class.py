@@ -6,7 +6,6 @@ from typing import Callable
 
 import h5py
 import numpy as np
-from xarray import DataArray
 
 from cr39py.core.units import unit_registry as u
 
@@ -125,28 +124,6 @@ class ExportableClassMixin:
                 self._write_hdf5_entry(entry_group, "key", key)
                 self._write_hdf5_entry(entry_group, "value", obj[key])
 
-        elif isinstance(obj, DataArray):
-            ds_group = group.require_group(name)
-            ds_group.attrs["type"] = type(obj).__name__
-            ds_group.attrs["dataset_name"] = str(obj.name)
-            # Write the main dataset
-            self._write_hdf5_entry(
-                ds_group, obj.name, obj.data, attrs={"unit": obj.attrs["unit"]}
-            )
-
-            coord_group = ds_group.require_group("coordinates")
-            axes = []
-            for key, coord in obj.coords.items():
-                self._write_hdf5_entry(
-                    coord_group, key, coord.values, attrs=coord.attrs
-                )
-                axes.append(key)
-
-            # Save a list of the coordinates axis names to preserve their
-            # order
-            # otherwise elements will be alphabetized in the HDF5
-            coord_group.attrs["axes"] = axes
-
         else:
             raise NotImplementedError(f"Saving object type {type(obj)} not supported.")
 
@@ -261,33 +238,6 @@ class ExportableClassMixin:
             error = entry.attrs["error"]
 
             return u.Measurement(value, error, unit)
-
-        elif dtype == "DataArray":
-            name = entry.attrs["dataset_name"]
-            data = entry[name][...]
-
-            if "axes" in entry["coordinates"].attrs:
-                axes = entry["coordinates"].attrs["axes"][...]
-            else:
-                axes = list(entry["coordinates"].keys())
-
-            coords = {}
-            for key in axes:
-                coords[key] = entry[f"coordinates/{key}"][...]
-
-            dataarray = DataArray(data, coords=coords, name=name)
-
-            # Tranfer attributrs of dataarray, includes units
-            for key, val in entry[name].attrs.items():
-                dataarray.attrs[key] = val
-
-            # Transfer attributes of coordinates, including units
-            for coord in axes:
-                item = entry["coordinates"][coord]
-                for key, val in item.attrs.items():
-                    dataarray.coords[coord].attrs[key] = val
-
-            return dataarray
 
         else:
             raise ValueError(f"Unrecognized dtype {dtype} for entry {entry}")
