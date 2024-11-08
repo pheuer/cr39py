@@ -1,5 +1,21 @@
+"""
+The `~cr39py.subset` module contains the `~cr39py.subset.Subset` class, which represents a subset of the tracks in a CR39 dataset.
+
+A subset consists of a list of cuts, all of which are applied to exclude tracks. The remaining tracks are in the subset. The
+subset also includes a domain, which is an initial cut. The only difference between the domain and the cuts is that the domain is always applied,
+while the other cuts may sometimes be inverted to plot the excluded tracks during analysis.
+
+Subsets can also be divided into bins along the diameter axis (which corresponds to the energy of the particles). This provides an easy
+way to examine the histograms of tracks made by different energy particles. Each of these bins is called a ``dslice``, and they can be used
+by using `~cr39py.subset.Subset.set_ndslices` to set ``ndslices`` to an integer > 1, then using `~cr39py.subset.Subset.select_dslice` to select
+the index of a particular dslice to show.
+
+"""
+
 from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.cut import Cut
+
+# TODO: Eliminate the domain? Why not just have that be another cut in the cut list...
 
 
 class Subset(ExportableClassMixin):
@@ -16,7 +32,7 @@ class Subset(ExportableClassMixin):
         A cut that defines the domain of the subset. The domain is the area in parameter
         space the subset encompasses. This could limit the subset to a region in space
         (e.g. x=[-5, 0]) or another parameter (e.g. D=[0,20]). The domain is represented
-        by a Cut object, but it is inclusive rather than exclusive.
+        by a `~cr39py.cut.Cut`.
 
     ndslices : int
         Number of bins in the diameter axis to slice the data into.
@@ -25,9 +41,6 @@ class Subset(ExportableClassMixin):
 
     Notes
     -----
-
-
-
     The subset includes a list of cuts that are used to exclude tracks that
     would otherwise be included in the domain.
 
@@ -43,6 +56,7 @@ class Subset(ExportableClassMixin):
 
         self.cuts = []
         self.ndslices = ndslices
+        self.current_dslice_index = 0
 
         if domain is not None:
             self.set_domain(domain)
@@ -55,8 +69,6 @@ class Subset(ExportableClassMixin):
             self.set_ndslices(1)
         else:
             self.set_ndslices(ndslices)
-
-        self.current_dslice_index = 0
 
     def __eq__(self, other):
         """
@@ -197,13 +209,13 @@ class Subset(ExportableClassMixin):
         --------
 
         Create a cut, then add it to the subset
-        .. code-block:: python
-            cut = Cut(cmin=30)
-            subset.add_cut(cut)
 
-        Or create a new cut on the subset automatically.
-        .. code-block:: python
-            subset.add_cut(cmin=30)
+        >>> cut = Cut(cmin=30)
+        >>> subset.add_cut(cut)
+
+        Or create a new cut on the subset automatically
+
+        >>> subset.add_cut(cmin=30)
 
         """
 
@@ -242,7 +254,7 @@ class Subset(ExportableClassMixin):
         ----------
         i : int
             Index of the Cut to replace.
-        cut : `cr39py.cut.Cut`
+        cut : `~cr39py.cut.Cut`
             New cut to insert.
         """
         if i > len(self.cuts) - 1:
