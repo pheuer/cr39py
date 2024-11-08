@@ -2,7 +2,8 @@
 The `~cr39py.subset` module contains the `~cr39py.subset.Subset` class, which represents a subset of the tracks in a CR39 dataset.
 
 A subset consists of a list of cuts, all of which are applied to exclude tracks. The remaining tracks are in the subset. The
-subset also includes a domain, which is an initial cut.
+subset also includes a domain, which is an initial cut. The only difference between the domain and the cuts is that the domain is always applied,
+while the other cuts may sometimes be inverted to plot the excluded tracks during analysis.
 
 Subsets can also be divided into bins along the diameter axis (which corresponds to the energy of the particles). This provides an easy
 way to examine the histograms of tracks made by different energy particles. Each of these bins is called a ``dslice``, and they can be used

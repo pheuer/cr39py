@@ -1,3 +1,7 @@
+"""
+The `~cr39py.scan` module contains the `~cr39py.scan.Scan` class, which represents a scan of an etched piece of CR39.
+"""
+
 import copy
 import os
 from functools import cached_property
