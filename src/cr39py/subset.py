@@ -1,5 +1,20 @@
+"""
+The `~cr39py.subset` module contains the `~cr39py.subset.Subset` class, which represents a subset of the tracks in a CR39 dataset.
+
+A subset consists of a list of cuts, all of which are applied to exclude tracks. The remaining tracks are in the subset. The
+subset also includes a domain, which is an initial cut.
+
+Subsets can also be divided into bins along the diameter axis (which corresponds to the energy of the particles). This provides an easy
+way to examine the histograms of tracks made by different energy particles. Each of these bins is called a ``dslice``, and they can be used
+by using `~cr39py.subset.Subset.set_ndslices` to set ``ndslices`` to an integer > 1, then using `~cr39py.subset.Subset.select_dslice` to select
+the index of a particular dslice to show.
+
+"""
+
 from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.cut import Cut
+
+# TODO: Eliminate the domain? Why not just have that be another cut in the cut list...
 
 
 class Subset(ExportableClassMixin):
@@ -16,7 +31,7 @@ class Subset(ExportableClassMixin):
         A cut that defines the domain of the subset. The domain is the area in parameter
         space the subset encompasses. This could limit the subset to a region in space
         (e.g. x=[-5, 0]) or another parameter (e.g. D=[0,20]). The domain is represented
-        by a Cut object, but it is inclusive rather than exclusive.
+        by a `~cr39py.cut.Cut`.
 
     ndslices : int
         Number of bins in the diameter axis to slice the data into.
@@ -25,9 +40,6 @@ class Subset(ExportableClassMixin):
 
     Notes
     -----
-
-
-
     The subset includes a list of cuts that are used to exclude tracks that
     would otherwise be included in the domain.
 
