@@ -489,8 +489,8 @@ class Scan(ExportableClassMixin):
         else:  # pragma: no cover
             raise ValueError(f"Statistic keyword not recognized: {statistic}")
 
-        model = TwoParameterModel()
-        energy = model.track_energy(d, particle, self.etch_time.m_as(u.min))
+        model = TwoParameterModel(particle)
+        energy = model.track_energy(d, self.etch_time.m_as(u.min))
 
         return energy
 
