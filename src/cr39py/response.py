@@ -43,12 +43,40 @@ class TwoParameterModel:
         "a": {"Z": 2, "A": 4, "k": 0.3938, "n": 1.676},
     }
 
+    # Bulk etch velocity is constant
     vB = 2.66  # km/s
 
-    def _particle(self, p):
-        return str(p).lower()
+    def __init__(self, particle, k=None, n=None):
+        self.particle = str(particle).lower()
 
-    def track_energy(self, diameter, particle, etch_time):
+        self._k = k
+        self._n = n
+
+    @property
+    def Z(self):
+        return self._data[self.particle]["Z"]
+
+    @property
+    def A(self):
+        return self._data[self.particle]["A"]
+
+    @property
+    def k(self):
+        return self._data[self.particle]["k"] if self._k is None else self._k
+
+    @k.setter
+    def k(self, k):
+        self._k = k
+
+    @property
+    def n(self):
+        return self._data[self.particle]["n"] if self._n is None else self._n
+
+    @n.setter
+    def n(self, n):
+        self._n = n
+
+    def track_energy(self, diameter, etch_time, k=None, n=None):
         """
         The energy corresponding to a track of a given diameter.
 
@@ -57,41 +85,38 @@ class TwoParameterModel:
         diameter : float
             Track diameter in um
 
-        particle : str
-            Particle type: "p", "d", "t", "a"
-
         etch_time : float
             Etch time in minutes.
 
         Returns
         -------
 
-        energy : float
-            Energy of track in MeV
-
+        energy : float | `~numpy.nan`
+            Energy of track in MeV, or `~numpy.nan` if there is no
+            valid energy that could have created a track of this diameter
+            at this etch time.
         """
+        k = self.k if k is None else k
+        n = self.n if n is None else n
 
         etch_time_hrs = etch_time / 60
+        energy = (
+            self.Z**2
+            * self.A
+            * ((2 * etch_time_hrs * self.vB / diameter - 1) / self.k) ** (1 / self.n)
+        )
+        return energy if not np.iscomplex(energy) else np.nan
 
-        key = self._particle(particle)
-        Z = self._data[key]["Z"]
-        A = self._data[key]["A"]
-        k = self._data[key]["k"]
-        n = self._data[key]["n"]
-
-        return Z**2 * A * ((2 * etch_time_hrs * self.vB / diameter - 1) / k) ** (1 / n)
-
-    def track_diameter(self, energy, particle, etch_time):
+    def track_diameter(self, energy, etch_time, k=None, n=None):
         """
         The diameter for a track after a given etch time.
+
+        Eq. 5 of B. Lahmann et al. 2020 RSI
 
         Parameters
         ----------
         energy : float
             Particle energy in MeV
-
-        particle : str
-            Particle type: "p", "d", "t", "a"
 
         etch_time : float
             Etch time in minutes.
@@ -100,19 +125,46 @@ class TwoParameterModel:
         -------
 
         diameter : float
-            Track diameter in um
+            Track diameter in um.
         """
+        k = self.k if k is None else k
+        n = self.n if n is None else n
 
         etch_time_hrs = etch_time / 60
 
-        key = self._particle(particle)
-        Z = self._data[key]["Z"]
-        A = self._data[key]["A"]
-        k = self._data[key]["k"]
-        n = self._data[key]["n"]
-
-        return np.where(
-            energy > 0,
-            2 * etch_time_hrs * self.vB / (1 + k * (energy / (Z**2 * A)) ** n),
-            np.nan,
+        return (
+            2
+            * etch_time_hrs
+            * self.vB
+            / (1 + self.k * (energy / (self.Z**2 * self.A)) ** self.n)
         )
+
+    def etch_time(self, energy, desired_diameter, k=None, n=None):
+        """
+        The etch time required to bring a track to the desired diameter.
+
+        Parameters
+        ----------
+        energy : float
+            Particle energy in MeV
+
+        desired_diameter : float
+            Desired final track diameter
+
+        Returns
+        -------
+
+        etch_time : float
+            Total etch time, in minutes
+        """
+        k = self.k if k is None else k
+        n = self.n if n is None else n
+
+        etch_time_hrs = (
+            desired_diameter
+            * (1 + k * (energy / (self.Z**2 * self.A)) ** n)
+            / 2
+            / self.vB
+        )
+
+        return etch_time_hrs * 60
