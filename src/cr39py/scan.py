@@ -569,6 +569,20 @@ class Scan(ExportableClassMixin):
 
         return ax0, ax1, arr
 
+    def overlap_parameter_histogram(self):
+        """The overlap parameter for each cell.
+
+        Only includes currently selected tracks.
+        """
+        x, y, ntracks = self.frames(axes=("X", "Y"))
+        x, y, D = self.frames(axes=("X", "Y", "D"))
+
+        chi = (
+            ntracks / self.binsize["X"] / self.binsize["Y"] * np.pi * (D * u.um) ** 2
+        ).m_as(u.dimensionless)
+
+        return x, y, chi
+
     def cli(self):  # pragma: no cover
         """
         Command line interface for interactively setting up cuts.
@@ -814,7 +828,10 @@ class Scan(ExportableClassMixin):
 
         fontsize = 16
 
-        xax, yax, arr = self.frames(axes=axes, tracks=tracks)
+        if axes == ("X", "Y", "CHI"):
+            xax, yax, arr = self.overlap_parameter_histogram()
+        else:
+            xax, yax, arr = self.frames(axes=axes, tracks=tracks)
 
         # If a figure and axis are provided, use those
         if figax is not None:
