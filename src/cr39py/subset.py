@@ -54,6 +54,8 @@ class Subset(ExportableClassMixin):
 
     def __init__(self, domain=None, ndslices=None):
 
+        self.current_dslice_index = 0
+
         self.cuts = []
         self.ndslices = ndslices
         self.current_dslice_index = 0
