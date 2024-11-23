@@ -20,12 +20,12 @@ def cr39scan():
     return Scan.from_cpsa(cpsa_path, etch_time=120)
 
 
-def test_binsize(cr39scan):
-    cr39scan.set_binsize("X", 500 * u.um)
+def test_framesize(cr39scan):
+    cr39scan.set_framesize("X", 500 * u.um)
 
 
-def test_optimize_binsize(cr39scan):
-    cr39scan.optimize_binsize()
+def test_optimize_xy_framesize(cr39scan):
+    cr39scan.optimize_xy_framesize()
 
 
 def test_get_selected_tracks(cr39scan):
@@ -75,8 +75,8 @@ def test_rotate(cr39scan):
     cr39scan.rotate(45)
 
 
-def test_frames(cr39scan):
-    cr39scan.frames()
+def test_histogram(cr39scan):
+    cr39scan.histogram()
 
 
 def test_plot(cr39scan):

@@ -20,6 +20,107 @@ from cr39py.subset import Subset
 
 from IPython import display
 
+from typing import Annotated, TypeVar
+
+
+
+
+TrackData = Annotated[np.ndarray, "(ntracks,6)"]
+
+class Axis(ExportableClassMixin):
+
+    _exportable_attributes = ["ind", 
+        '_unit', '_default_range', 'framesize']
+
+    def __init__(self, ind=None, unit=None, 
+                default_range=(None,None,None))->None:
+        
+        # These parameters are intended to not be mutable
+        self._ind = ind
+        self._unit = unit
+        self._default_range = default_range
+        self.framesize = None
+
+    @property
+    def ind(self)->int:
+        return self._ind
+    @property
+    def unit(self):
+        return self._unit
+    @property
+    def default_range(self):
+        """
+        Default range is (min, max, framesize).
+        None means set based on data bounds
+        """
+        return self._default_range
+
+    def setup(self, tracks:TrackData)->None:
+        """
+        Setup the axes for the provided track array.
+
+        Parameters
+        ----------
+        tracks : `~numpy.ndarray` (ntracks,6)
+            Tracks for which the axis should be initialized.
+
+        """
+        self._init_framesize(tracks)
+
+    def _init_framesize(self, tracks:TrackData )->None:
+        """
+        Calculates an initial framesize.
+        """
+        framesize = self.default_range[2]
+        ntracks = tracks.shape[0]
+        
+        if framesize is None:
+            nbins = int(np.clip(np.sqrt(ntracks) / 20, 20, 200))
+            minval = np.min(tracks[:, self.ind])
+            maxval = np.max(tracks[:, self.ind])
+            framesize = (maxval - minval) / nbins
+        
+        self.framesize = framesize * self.unit
+
+    def axis(self, tracks:TrackData, units:bool=True)->np.ndarray | u.Quantity:
+        """
+        Axis calculated for the provided array of tracks.
+
+        Parameters
+        ----------
+
+        tracks : `~numpy.ndarray` (ntracks,6)
+            Tracks for which the axis should be created.
+
+        units : bool
+            If True, return axis as a Quantity. Otherwise
+            return as a `~numpy.ndarray` in the base units
+            for this axis.
+
+        """
+
+        # Calculate a min and max value for the axis
+        minval = self.default_range[0]
+        if minval is None:
+            minval = np.min(tracks[:, self.ind])
+
+        maxval = self.default_range[1]
+        if maxval is None:
+            maxval = np.max(tracks[:, self.ind])
+
+        ax =  np.arange(minval, maxval, 
+                        self.framesize.m_as(self.unit))
+        
+        if units:
+            ax *= self.unit
+        
+        return ax
+            
+
+
+    
+
+
 class Scan(ExportableClassMixin):
     """
     A representation of a piece of CR39 data.
@@ -33,51 +134,29 @@ class Scan(ExportableClassMixin):
     as a histogram for further data analysis.
     """
 
-    # Axes dictionary for trackdata
-    axes_ind = {"X": 0, "Y": 1, "D": 2, "C": 3, "E": 5, "Z": 6}
-
-    axes_units = {
-        "X": u.cm,
-        "Y": u.cm,
-        "D": u.um,
-        "C": u.dimensionless,
-        "E": u.dimensionless,
-        "Z": u.um,
-    }
-
-    # Set default ranges for some of the parametres
-    # min, max, binsize
-    default_ranges = {
-        "X": (None, None, None),
-        "Y": (None, None, None),
-        "D": (0, 20, 0.5),
-        "C": (0, 80, 1),
-        "E": (0, 50, 1),
-        "Z": (None, None, None),
-    }
+    
+    axes = {'X': Axis(ind=0, unit=u.cm, default_range=(None, None, None)),
+               'Y': Axis(ind=1, unit=u.cm, default_range=(None, None, None)),
+               'D': Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5)),
+               'C': Axis(ind=3, unit=u.dimensionless, default_range=(0, 80, 1)),
+               'E': Axis(ind=4, unit=u.dimensionless, default_range=(0, 50, 1)),
+               'Z': Axis(ind=5, unit=u.um, default_range=(None, None, None)),
+               }
 
     _exportable_attributes = [
         "tracks",
         "axes",
-        "binsize",
+        "framesize",
         "subsets",
         "current_subset_index",
         "etch_time",
     ]
 
-    def __init__(self):
+    def __init__(self)->None:
         self.current_subset_index = 0
         self.subsets = []
 
         self.tracks = None
-        self.binsize = {
-            "X": None,
-            "Y": None,
-            "D": None,
-            "C": None,
-            "E": None,
-            "Z": None,
-        }
 
         # Etch time, u.Quantity
         self.etch_time = None
@@ -87,7 +166,7 @@ class Scan(ExportableClassMixin):
     # **********************************
 
     @classmethod
-    def from_tracks(cls, tracks, etch_time: float):
+    def from_tracks(cls, tracks:TrackData, etch_time: float):
         """
         Initialize a Scan object from an array of tracks.
 
@@ -104,23 +183,12 @@ class Scan(ExportableClassMixin):
         obj.etch_time = etch_time * u.min
         obj.tracks = tracks
 
-        # Estimate a good binsize for each dimension
-        # Aim for some # of tracks per bin, ~25-50 is about right?
-        for i, ax in enumerate(obj.axes_ind.keys()):
-
-            binsize = obj.default_ranges[ax][2]
-            if binsize is None:
-                nbins = int(np.clip(np.sqrt(obj.ntracks) / 20, 20, 200))
-                minval = np.min(obj.tracks[:, i])
-                maxval = np.max(obj.tracks[:, i])
-                binsize = (maxval - minval) / nbins
-
-            obj.binsize[ax] = binsize * obj.axes_units[ax]
+        # Initialize the axes based on the provided tracks
+        for ax in obj.axes.values():
+            ax.setup(obj.tracks)
 
         # Initialize the list of subsets with a single subset to start.
-        obj.subsets = [
-            Subset(),
-        ]
+        obj.subsets = [Subset(),]
 
         return obj
 
@@ -143,47 +211,65 @@ class Scan(ExportableClassMixin):
         return cls.from_tracks(tracks, etch_time)
 
     # **********************************
-    # Axes + bin sizes
+    # Framesize setup
     # **********************************
-
-    def set_binsize(self, ax, binsize):
+    def set_framesize(self, ax_key:str, framesize: float | u.Quantity)->None:
         """
-        Sets the bin width for a given axis
-        """
-        if ax in ["X", "Y"]:
-            self.set_binsize("XY", binsize)
-        elif ax == "XY":
-            self.binsize["X"] = binsize
-            self.binsize["Y"] = binsize
-        else:
-            self.binsize[ax] = binsize
+        Sets the bin width for a given axis.
 
-    def optimize_binsize(self, tracks_per_bin_goal=10):
-        """
-        Optimizes binsize for a given tracks per bin.
-
-        Creates square bins.
+        If axs is 'X' or 'Y', update the framesize
+        for both so that the frames remain square.
 
         Parameters
         ----------
 
-        tracks_per_bin_goal: int (optional)
+        ax_key : str
+            Name of the axis to change.
+
+        framesize : float | u.Quantity
+            New framesize
+
+        """
+
+        # If no unit is supplied, assume the
+        # default units for this axis
+        if not isinstance(framesize, u.Quantity):
+            framesize *= self.axes[ax_key].unit
+
+        if ax_key in ["X", "Y"]:
+            self.set_framesize("XY", framesize)
+        elif ax_key == "XY":
+            self.axes["X"].framesize = framesize
+            self.axes["Y"].framesize = framesize
+        else:
+            self.axes[ax_key].framesize = framesize
+
+    def optimize_xy_framesize(self, tracks_per_frame_goal:int=10)->None:
+        """
+        Optimizes XY framesize for a given tracks per frame.
+
+        Creates square frames.
+
+        Parameters
+        ----------
+
+        tracks_per_frame_goal: int (optional)
             Number of tracks per bin to optimize for.
             Default is 10.
         """
 
-        # initialize with current binsize
-        binsize = self.binsize["X"]
+        # initialize with current framesize
+        framesize = self.axes['X'].framesize
 
-        # Estimate the ideal binsize so that the median bin has some
+        # Estimate the ideal framesize so that the median bin has some
         # number of tracks in it
         goal_met = False
         ntries = 0
         while not goal_met:
-            _, _, image = self.frames()
+            _, _, image = self.histogram()
             median_tracks = np.median(image)
 
-            print(f"binsize: {binsize:.1e}, median_tracks: {median_tracks:.2f}")
+            print(f"framesize: {framesize:.1e}, median_tracks: {median_tracks:.2f}")
 
             # If many tries have happened, you may be in a loop and need
             # to relax the requirement
@@ -192,72 +278,43 @@ class Scan(ExportableClassMixin):
             else:
                 atol = 3
 
-            # Accept the binsize if within 5% of the goal value
-            if np.isclose(median_tracks, tracks_per_bin_goal, atol=atol):
+            # Accept the framesize if within 5% of the goal value
+            if np.isclose(median_tracks, tracks_per_frame_goal, atol=atol):
                 print("Goal met")
                 goal_met = True
             else:
-                print("Trying a different binsize")
-                # Amount by which to change the binsize side length
+                print("Trying a different framesize")
+                # Amount by which to change the framesize side length
                 # to try and capture the right number of tracks
-                binsize_change = np.sqrt(tracks_per_bin_goal / median_tracks)
+                framesize_change = np.sqrt(tracks_per_frame_goal / median_tracks)
 
                 # If the bin is too small, shrink by a bit less than
                 # the calculated amount
-                if median_tracks > tracks_per_bin_goal:
-                    binsize_change *= 0.95
+                if median_tracks > tracks_per_frame_goal:
+                    framesize_change *= 0.95
                 else:
-                    binsize_change *= 1.05
+                    framesize_change *= 1.05
 
                 # TODO: Move in steps smaller than the calculated optimum
                 # to avoid overshooting
-                binsize = binsize * binsize_change
+                framesize = framesize * framesize_change
 
                 ntries += 1
 
-            self.set_binsize("XY", binsize)
+            self.set_framesize("XY", framesize)
 
-    def _axes(self, tracks):
-        """
-        Calculate axes for a given track array.
-
-        Iterates over the axes
-        """
-        axes = {}
-        for ax, ind in self.axes_ind.items():
-            # Calculate a min and max value for the axis
-            minval = self.default_ranges[ax][0]
-            if minval is None:
-                minval = np.min(tracks[:, ind])
-
-            maxval = self.default_ranges[ax][1]
-            if maxval is None:
-                maxval = np.max(tracks[:, ind])
-
-            # Create the new axis
-            axes[ax] = (
-                np.arange(minval, maxval, self.binsize[ax].m_as(self.axes_units[ax]))
-                * self.axes_units[ax]
-            )
-        return axes
-
-    @property
-    def axes(self):
-        """
-        Axes for the currently selected tracks.
-        """
-        return self._axes(self.selected_tracks)
+    
 
     # ************************************************************************
     # Manipulate Subsets
     # ************************************************************************
 
     @property
-    def current_subset(self):
+    def current_subset(self)->None:
         return self.subsets[self.current_subset_index]
 
     @property
-    def nsubsets(self):
+    def nsubsets(self)->None:
         return len(self.subsets)
 
     def select_subset(self, i):
@@ -271,14 +328,14 @@ class Scan(ExportableClassMixin):
                 i = self.nsubsets + i
             self.current_subset_index = i
 
-    def add_subset(self, *args):
+    def add_subset(self, *args:Subset)->None:
         if len(args) == 1:
             subset = args[0]
         elif len(args) == 0:
             subset = Subset()
         self.subsets.append(subset)
 
-    def remove_subset(self, i):
+    def remove_subset(self, i:int)->None:
         if i > self.nsubsets - 1:
             raise ValueError(
                 f"Cannot remove the {i} subset, there are only "
@@ -295,39 +352,60 @@ class Scan(ExportableClassMixin):
     # Manipulate Cuts
     # These methods are all wrapers for methods on the current selected Subset
     # ************************************************************************
-    def set_domain(self, *args, **kwargs):
+    def set_domain(self, *args, **kwargs)->None:
         """
         Sets the domain cut on the currently selected subset.
+
+        See docstring for
+        `~cr39py.subset.Subset.set_domain`
         """
         self.current_subset.set_domain(*args, **kwargs)
 
-    def select_dslice(self, *args, **kwargs):
-        self.current_subset.select_dslice(*args, **kwargs)
+    def select_dslice(self, dslice: int | None)->None:
+        """
+        Select a new dslice by index. 
 
-    def set_ndslices(self, *args, **kwargs):
+        See docstring for
+        `~cr39py.subset.Subset.select_dslice`
         """
-        Sets the number of ndslices
+        self.current_subset.select_dslice(dslice)
+
+    def set_ndslices(self, ndslices:int)->None:
         """
-        self.current_subset.set_ndslices(*args, **kwargs)
+        Sets the number of ndslices on the current subset.
+
+        See docstring for
+        `~cr39py.subset.Subset.set_ndslices`
+        """
+        self.current_subset.set_ndslices(ndslices)
 
     # ************************************************************************
     # Methods for managing cut list
     # ************************************************************************
-    def add_cut(self, *args, **kwargs):
+    def add_cut(self, *args, **kwargs)->None:
         """
         Add a cut to the currently selected subset.
+
+        Takes the same arguments as 
+        `~cr39py.subset.Subset.add_cut`
         """
         self.current_subset.add_cut(*args, **kwargs)
 
-    def remove_cut(self, *args, **kwargs):
+    def remove_cut(self, *args, **kwargs)->None:
         """
         Remove a cut from the currently selected subset.
+
+        Takes the same arguments as 
+        `~cr39py.subset.Subset.remove_cut`
         """
         self.current_subset.remove_cut(*args, **kwargs)
 
-    def replace_cut(self, *args, **kwargs):
+    def replace_cut(self, *args, **kwargs)->None:
         """
         Replace a cut on the currently selected subset.
+
+        Takes the same arguments as 
+        `~cr39py.subset.Subset.replace_cut`
         """
         self.current_subset.replace_cut(*args, **kwargs)
 
@@ -336,27 +414,20 @@ class Scan(ExportableClassMixin):
     # *************************************************************************
 
     @property
-    def ntracks(self):
+    def ntracks(self)->int:
+        """
+        Number of tracks.
+        """
         return self.tracks.shape[0]
 
-    @cached_property
-    def _selected_tracks(self):
-        # Save hash of the current subset, only reset tracks
-        # property if the subset has changed, or if the binsize has
-        # changed
-        self._cached_subset_hash = hash(self.current_subset)
-        self._cached_binsize = copy.copy(self.binsize)
-        return self._get_selected_tracks()
-
-    def reset_selected_tracks(self):
-        """Reset the cached selected tracks"""
-        if hasattr(self, "_selected_tracks"):
-            del self._selected_tracks
-
-    def _get_selected_tracks(self, use_cuts: None | list[int] = None, invert=False):
+    def _get_selected_tracks(self, use_cuts: None | list[int] = None,
+                              invert=False)->TrackData:
         """
         Return tracks that meet the current set of specifications,
         and/or specifications made by the keywords.
+
+        Parameters
+        ----------
 
         use_cuts : int, list of ints (optional)
             If provided, only the cuts corresponding to the int or ints
@@ -366,6 +437,11 @@ class Scan(ExportableClassMixin):
             If true, return the inverse of the cuts selected. Default is
             false.
 
+        Returns
+        -------
+        
+        selected_tracks : `~numpy.ndarray` (ntracks,6) 
+            The selected track array.
 
         """
 
@@ -378,7 +454,8 @@ class Scan(ExportableClassMixin):
                     raise ValueError(f"Specified cut index is invalid: {s}")
         use_cuts = list(use_cuts)
 
-        keep = np.ones(self.ntracks).astype(bool)
+        # boolean mask of tracks to include in the selected tracks
+        include = np.ones(self.ntracks).astype(bool)
 
         for i, cut in enumerate(self.current_subset.cuts):
             if i in use_cuts:
@@ -389,15 +466,15 @@ class Scan(ExportableClassMixin):
                 # in the excluded region (unless we are inverting)
                 if not invert:
                     x = np.logical_not(x)
-                keep *= x
+                include *= x
 
         # Regardless of anything else, only show tracks that are within
         # the domain
         if self.current_subset.domain is not None:
-            keep *= self.current_subset.domain.test(self.tracks)
+            include *= self.current_subset.domain.test(self.tracks)
 
         # Select only these tracks
-        selected_tracks = self.tracks[keep, :]
+        selected_tracks = self.tracks[include, :]
 
         # Calculate the bin edges for each dslice
         # !! note that the tracks are already sorted into order by diameter
@@ -416,9 +493,22 @@ class Scan(ExportableClassMixin):
             b1 = b0 + dbin
             selected_tracks = selected_tracks[b0:b1, :]
         return selected_tracks
+    
+    @cached_property
+    def _selected_tracks(self)->TrackData:
+        # Save hash of the current subset, only reset tracks
+        # property if the subset has changed, or if the framesize has
+        # changed
+        self._cached_subset_hash = hash(self.current_subset)
+        return self._get_selected_tracks()
+
+    def reset_selected_tracks(self):
+        """Reset the cached selected tracks"""
+        if hasattr(self, "_selected_tracks"):
+            del self._selected_tracks
 
     @property
-    def selected_tracks(self):
+    def selected_tracks(self)->TrackData:
         """
         Tracks array for currently selected tracks.
 
@@ -432,7 +522,6 @@ class Scan(ExportableClassMixin):
             # _selected_tracks was updated, the property is still up to date
             if (
                 hash(self.current_subset) == self._cached_subset_hash
-                and self.binsize == self._cached_binsize
             ):
                 pass
             # If not, delete the properties so they will be created again
@@ -442,15 +531,16 @@ class Scan(ExportableClassMixin):
         return self._selected_tracks
 
     @property
-    def nselected_tracks(self):
+    def nselected_tracks(self)->int:
         """
         Number of currently selected tracks.
         """
         return self.selected_tracks.shape[0]
 
-    def rotate(self, angle: float):
+    def rotate(self, angle: float, center:tuple[float]=(0,0))->None:
         """
-        Rotates the tracks in the XY plane by `rot` around (0,0)
+        Rotates the tracks in the XY plane by `rot` around
+        a point
 
         Paramters
         ---------
@@ -459,17 +549,17 @@ class Scan(ExportableClassMixin):
             Rotation angle in degrees
         """
 
-        x = self.tracks[:, 0]
-        y = self.tracks[:, 1]
+        x = self.tracks[:, 0] - center[0]
+        y = self.tracks[:, 1] - center[1]
         r = np.sqrt(x**2 + y**2)
         theta = np.arctan2(y, x)
         theta += np.deg2rad(angle)
-        self.tracks[:, 0] = r * np.cos(theta)
-        self.tracks[:, 1] = r * np.sin(theta)
+        self.tracks[:, 0] = r * np.cos(theta) + center[0]
+        self.tracks[:, 1] = r * np.sin(theta) + center[1]
 
         self.reset_selected_tracks()
 
-    def track_energy(self, particle, statistic="mean"):
+    def track_energy(self, particle, statistic="mean")->u.Quantity:
         """
         The energy of the tracks on the current subset + dslice
 
@@ -496,8 +586,9 @@ class Scan(ExportableClassMixin):
     # Data output
     # *************************************************************************
 
-    def frames(self, axes:tuple[str]=("X", "Y"),
-                quantity: str|None=None, tracks:np.ndarray|None=None):
+    def histogram(self, axes:tuple[str]=("X", "Y"),
+                quantity: str|None=None, 
+                tracks:np.ndarray|None=None)->tuple[np.ndarray]:
         """
         Create a histogram of the currently selected track data
 
@@ -523,62 +614,359 @@ class Scan(ExportableClassMixin):
             Tracks data from which to make the histogram. Default
             is the currently selected track data.
 
+        Returns
+        -------
+
+        hax  : `~np.ndarray`
+            Horizontal axis
+
+        vax : `~np.ndarray`
+            Vertical axis
+
+        histogram : `~np.ndarray`
+            Histogram array
+
         """
-
-        i0 = self.axes_ind[axes[0]]
-        i1 = self.axes_ind[axes[1]]
-
         if tracks is None:
             tracks = self.selected_tracks
 
-        _axes = self.axes
-        ax0 = _axes[axes[0]].m
-        ax1 = _axes[axes[1]].m
+        ax0= self.axes[axes[0]]
+        ax1= self.axes[axes[1]]
+        ax0_axis = ax0.axis(tracks, units=False)
+        ax1_axis = ax1.axis(tracks, units=False)
 
         # If creating a histogram like the X,Y,D plots
         if quantity is not None:
-            i2 = self.axes_ind[quantity]
-            weights = tracks[:, i2]
+            ax2 = self.axes[quantity]
+            weights = tracks[:, ax2.ind]
         else:
             weights = None
 
-        rng = [(np.min(ax0), np.max(ax0)), (np.min(ax1), np.max(ax1))]
-        bins = [ax0.size, ax1.size]
+        rng = [(np.min(ax0_axis), np.max(ax0_axis)),
+                (np.min(ax1_axis), np.max(ax1_axis))]
+        bins = [ax0_axis.size, ax1_axis.size]
 
         arr = histogram2d(
-            tracks[:, i0],
-            tracks[:, i1],
+            tracks[:, ax0.ind],
+            tracks[:, ax1.ind],
             bins=bins,
             range=rng,
             weights=weights,
         )
 
         # Create the unweighted histogram and divide by it (sans zeros)
-        if len(axes) == 3:
+        if quantity is not None:
             arr_uw = histogram2d(
-                tracks[:, i0],
-                tracks[:, i1],
+                tracks[:, ax0.ind],
+                tracks[:, ax1.ind],
                 bins=bins,
                 range=rng,
             )
             nz = np.nonzero(arr_uw)
             arr[nz] = arr[nz] / arr_uw[nz]
 
-        return ax0, ax1, arr
+        return ax0_axis, ax1_axis, arr
 
-    def overlap_parameter_histogram(self):
-        """The overlap parameter for each cell.
+    def overlap_parameter_histogram(self)->tuple[np.ndarray]:
+        """The Zylstra overlap parameter for each cell.
 
         Only includes currently selected tracks.
+
+        Returns
+        -------
+
+        hax  : `~np.ndarray`
+            Horizontal axis
+
+        vax : `~np.ndarray`
+            Vertical axis
+
+        chi : `~np.ndarray`
+            Histogram of chi for each cell
+
         """
-        x, y, ntracks = self.frames(axes=("X", "Y"))
-        x, y, D = self.frames(axes=("X", "Y", "D"))
+        x, y, ntracks = self.histogram(axes=("X", "Y"))
+        x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
 
         chi = (
-            ntracks / self.binsize["X"] / self.binsize["Y"] * np.pi * (D * u.um) ** 2
+            ntracks / self.axes["X"].framesize / self.axes["Y"].framesize * np.pi * D**2
         ).m_as(u.dimensionless)
 
         return x, y, chi
+
+    # *************************************************************************
+    # Track Manipulation
+    # *************************************************************************
+
+    def plot(
+        self,
+        axes: tuple[str] | None =None,
+        quantity: str|None = None,
+        tracks:TrackData|None=None,
+        xrange: Sequence[float,None] | None  =None,
+        yrange:Sequence[float,None] | None  =None,
+        zrange: Sequence[float,None] | None  =None, 
+        log:bool=False,
+        figax=None,
+        show=True,
+        
+    ):
+        """
+        Plots a histogram of the track data.
+
+        In addition to the track quantities [X,Y,D,C,E,Z], the following
+        custom quantities can also be plotted: 
+
+        - CHI : The track overlap parameter from Zylstra et al. 2012
+
+        Parameters
+        ----------
+
+        axes: tuple of str, optional
+            Sets which axes to plot. If two axes are provided,
+            a histogram of tracks will be made. Default is ('X','Y')
+
+        quantity: str | None
+            Sets which quantity to plot. The default is None, which will
+            result in plotting an unweighted histogram of the number
+            of tracks in each frame. Any of the track quantities are 
+            valid, as are the list of custom quantities above. 
+
+        tracks: `~numpy.ndarray` (ntracks,6) (optional)
+            Array of tracks to plot. Defaults to the 
+            currently selected tracks. 
+
+        xrange: Sequence[float,None] (optional)
+            Limits for the horizontal axis. Setting either value to
+            None will use the minimum or maximum of the data range
+            for that value. Default is to plot the full data range.
+
+        yrange: Sequence[float,None] (optional)
+            Limits for the vertical axis. Setting either value to
+            None will use the minimum or maximum of the data range
+            for that value. Default is to plot the full data range.
+
+        zrange: Sequence[float,None] (optional)
+            Limits for the plotted quantity. Setting either value to
+            None will use the minimum or maximum of the data range
+            for that value. Default is to plot the full data range.
+
+        log : bool (optional)
+            If ``True``, plot the log of the quantity.
+
+        figax : tuple(Fig,Ax), optional
+            Tuple of (Figure, Axes) onto which the plot will
+            be put. If none is provided, a new figure will be
+            created.
+
+        show : bool, optional
+            If True, call plt.show() at the end to display the 
+            plot. Default is True. Pass False if this plot is
+            being made as a subplot of another figure.
+
+        Returns
+        -------
+
+        fig, ax : Figure, Axes
+            The matplotlib figure and axes objects with
+            the plot.
+
+        
+
+        """
+        fontsize = 16
+
+        # If a figure and axis are provided, use those
+        if figax is not None:
+            fig, ax = figax
+        else:
+            fig = plt.figure()
+            ax = fig.add_subplot()
+
+        if axes is None:
+            axes = ("X", "Y")
+
+        if xrange is None:
+            xrange = [None, None]
+        if yrange is None:
+            yrange = [None, None]
+        if zrange is None:
+            zrange = [None, None]
+
+        # Get the requested histogram
+        if quantity == 'CHI':
+            xax, yax, arr = self.overlap_parameter_histogram()
+        else:
+            xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
+
+        # Set all 0's in the histogram to NaN so they appear as 
+        # blank white space on the plot
+        arr[arr == 0] = np.nan
+
+        if quantity is None:
+            ztitle = "# Tracks"
+            title = f"{axes[0]}, {axes[1]}"
+        else:
+            ztitle = quantity
+            title = f"{axes[0]}, {axes[1]}, {quantity}"
+
+        # Set any None bounds to the extrema of the ranges
+        xrange[0] = np.nanmin(xax) if xrange[0] is None else xrange[0]
+        xrange[1] = np.nanmax(xax) if xrange[1] is None else xrange[1]
+        yrange[0] = np.nanmin(yax) if yrange[0] is None else yrange[0]
+        yrange[1] = np.nanmax(yax) if yrange[1] is None else yrange[1]
+        zrange[0] = np.nanmin(arr) if zrange[0] is None else zrange[0]
+        zrange[1] = np.nanmax(arr) if zrange[1] is None else zrange[1]
+        
+        # Apply log transform if requested
+        if log:
+            title += " (log)"
+            nonzero = np.nonzero(arr)
+            arr[nonzero] = np.log10(arr[nonzero])
+        else:
+            title += " (lin)"
+
+
+        if axes == ("X", "Y"):
+            ax.set_aspect("equal")
+
+        ax.set_xlim(*xrange)
+        ax.set_ylim(*yrange)
+        ax.set_xlabel(axes[0], fontsize=fontsize)
+        ax.set_ylabel(axes[1], fontsize=fontsize)
+        ax.set_title(title, fontsize=fontsize)
+
+        try:
+            p = ax.pcolorfast(xax, yax, arr.T)
+
+            cb_kwargs = {
+                "orientation": "vertical",
+                "pad": 0.07,
+                "shrink": 0.8,
+                "aspect": 16,
+            }
+            cbar = fig.colorbar(p, ax=ax, **cb_kwargs)
+            cbar.set_label(ztitle, fontsize=fontsize)
+
+        except ValueError:  # raised if one of the arrays is empty
+            pass
+
+        return fig, ax
+
+    def cutplot(self, tracks:TrackData|None=None, show:bool=True):
+        """
+        Makes a standard figure useful for applying cuts.
+
+        Subplots are:
+        - (X,Y,Number of particles) (simple histogram)
+        - 
+
+        Parameters
+        ----------
+
+        tracks : `~numpy.ndarray` (ntracks, 6), optional
+            Array of tracks to plot. Defaults to the
+            currently selected tracks. 
+
+        show : bool, optional
+            If True, call plt.show() at the end to display the 
+            plot. Default is True. Pass False if this plot is
+            being made as a subplot of another figure.
+
+        """
+
+        if tracks is None:
+            tracks = self.selected_tracks
+
+        fig, axarr = plt.subplots(nrows=2, ncols=2, figsize=(9, 9))
+        fig.subplots_adjust(hspace=0.3, wspace=0.3)
+
+        title = f"Subset {self.current_subset_index}, "
+
+        title += (
+            f"dslice {self.current_subset.current_dslice_index} of "
+            f"{self.current_subset.ndslices} selected, "
+        )
+
+        title += f'\nEtch time: {self.etch_time.m_as(u.min):.1f} min.'
+
+        fig.suptitle(title)
+
+        # X, Y
+        ax = axarr[0][0]
+        self.plot(
+            axes=("X", "Y"),
+            show=False,
+            figax=(fig, ax),
+            xrange=self.current_subset.domain.xrange,
+            yrange=self.current_subset.domain.yrange,
+            tracks=tracks,
+        )
+
+        # D, C
+        ax = axarr[0][1]
+        self.plot(
+            axes=("D", "C"),
+            show=False,
+            figax=(fig, ax),
+            log=True,
+            xrange=self.current_subset.domain.drange,
+            yrange=self.current_subset.domain.crange,
+            tracks=tracks,
+        )
+
+        # X, Y, D
+        ax = axarr[1][0]
+        self.plot(
+            axes=("X", "Y"),
+            quantity='D',
+            show=False,
+            figax=(fig, ax),
+            xrange=self.current_subset.domain.xrange,
+            yrange=self.current_subset.domain.yrange,
+            zrange=self.current_subset.domain.drange,
+            tracks=tracks,
+        )
+
+        # D, E
+        ax = axarr[1][1]
+        self.plot(
+            axes=("D", "E"),
+            show=False,
+            figax=(fig, ax),
+            log=True,
+            xrange=self.current_subset.domain.drange,
+            yrange=self.current_subset.domain.erange,
+            tracks=tracks,
+        )
+
+        if show:
+            plt.show()
+
+        return fig, ax
+
+    def focus_plot(self, show:bool=True):
+        """
+        Plot the focus (z coordinate) over the scan. Used to look for
+        abnormalities that may indicate a failed scan.
+        """
+
+        fig, ax = plt.subplots()
+
+        self.plot(
+            axes=("X", "Y", "Z"),
+            figax=(fig, ax),
+            xrange=self.current_subset.domain.xrange,
+            yrange=self.current_subset.domain.yrange,
+        )
+
+        if show:
+            plt.show()
+        return fig,ax
+
+    # *******************************************************
+    # Command line interface
+    # *******************************************************
 
     def cli(self):  # pragma: no cover
         """
@@ -638,7 +1026,7 @@ class Scan(ExportableClassMixin):
                     "'new' to create a new subset"
                     "'help' -> print this documentation\n"
                     "'end' -> accept the current values\n"
-                    "'binsize` -> Change the binsize on an axis\n"
+                    "'framesize` -> Change the framesize on an axis\n"
                     " ** Cut keywords ** \n"
                     "xmin, xmax, ymin, ymax, dmin, dmax, cmin, cmax, emin, emax\n"
                     "e.g. 'xmin:0,xmax:5,dmax=15'\n"
@@ -666,15 +1054,15 @@ class Scan(ExportableClassMixin):
                 self.cutplot(show=True)
                 changed = True
 
-            elif x == "binsize":
+            elif x == "framesize":
                 print("Enter the name of the axis to change")
                 ax_name = _cli_input(mode="alpha-integer")
                 ax_name = ax_name.upper()
                 print(f"Selected axis {ax_name}")
-                print(f"Current binsize is {self.binsize[ax_name]:.1e}")
-                print("Enter new binsize")
-                binsize = _cli_input(mode="float")
-                self.set_binsize(ax_name, binsize)
+                print(f"Current framesize is {self.axes[ax_name].framesize:.1e}")
+                print("Enter new framesize")
+                framesize = _cli_input(mode="float")
+                self.set_framesize(ax_name, framesize)
                 self.cutplot(show=True)
                 changed = True
 
@@ -789,269 +1177,3 @@ class Scan(ExportableClassMixin):
 
 
         return changed
-
-    # *************************************************************************
-    # Track Manipulation
-    # *************************************************************************
-
-    def plot(
-        self,
-        axes: tuple[str] | None =None,
-        quantity: str|None = None,
-        tracks=None,
-        xrange: Sequence[float,None] | None  =None,
-        yrange:Sequence[float,None] | None  =None,
-        zrange: Sequence[float,None] | None  =None, 
-        log:bool=False,
-        figax=None,
-        show=True,
-        
-    ):
-        """
-        Plots a histogram of the track data.
-
-        In addition to the track quantities [X,Y,D,C,E,Z], the following
-        custom quantities can also be plotted: 
-
-        - CHI : The track overlap parameter from Zylstra et al. 2012
-
-        Parameters
-        ----------
-
-        axes: tuple of str, optional
-            Sets which axes to plot. If two axes are provided,
-            a histogram of tracks will be made. Default is ('X','Y')
-
-        quantity: str | None
-            Sets which quantity to plot. The default is None, which will
-            result in plotting an unweighted histogram of the number
-            of tracks in each frame. Any of the track quantities are 
-            valid, as are the list of custom quantities above. 
-
-        tracks: `~numpy.ndarray` (ntracks,6) (optional)
-            Array of tracks to plot. Defaults to the 
-            currently selected tracks. 
-
-        xrange: Sequence[float,None] (optional)
-            Limits for the horizontal axis. Setting either value to
-            None will use the minimum or maximum of the data range
-            for that value. Default is to plot the full data range.
-
-        yrange: Sequence[float,None] (optional)
-            Limits for the vertical axis. Setting either value to
-            None will use the minimum or maximum of the data range
-            for that value. Default is to plot the full data range.
-
-        zrange: Sequence[float,None] (optional)
-            Limits for the plotted quantity. Setting either value to
-            None will use the minimum or maximum of the data range
-            for that value. Default is to plot the full data range.
-
-        log : bool (optional)
-            If ``True``, plot the log of the quantity.
-
-        figax : tuple(Fig,Ax), optional
-            Tuple of (Figure, Axes) onto which the plot will
-            be put. If none is provided, a new figure will be
-            created.
-
-        show : bool, optional
-            If True, call plt.show() at the end to display the 
-            plot. Default is True. Pass False if this plot is
-            being made as a subplot of another figure.
-
-        Returns
-        -------
-
-        fig, ax : Figure, Axes
-            The matplotlib figure and axes objects with
-            the plot.
-
-        
-
-        """
-        fontsize = 16
-
-        # If a figure and axis are provided, use those
-        if figax is not None:
-            fig, ax = figax
-        else:
-            fig = plt.figure()
-            ax = fig.add_subplot()
-
-        if axes is None:
-            axes = ("X", "Y")
-
-        if xrange is None:
-            xrange = [None, None]
-        if yrange is None:
-            yrange = [None, None]
-        if zrange is None:
-            zrange = [None, None]
-
-        # Get the requested histogram
-        if quantity == 'CHI':
-            xax, yax, arr = self.overlap_parameter_histogram()
-        else:
-            xax, yax, arr = self.frames(axes=axes, tracks=tracks)
-
-        # Set all 0's in the histogram to NaN so they appear as 
-        # blank white space on the plot
-        arr[arr == 0] = np.nan
-
-        if quantity is None:
-            ztitle = "# Tracks"
-            title = f"{axes[0]}, {axes[1]}"
-        else:
-            ztitle = quantity
-            title = f"{axes[0]}, {axes[1]}, {quantity}"
-
-        # Set any None bounds to the extrema of the ranges
-        xrange[0] = np.nanmin(xax) if xrange[0] is None else xrange[0]
-        xrange[1] = np.nanmax(xax) if xrange[1] is None else xrange[1]
-        yrange[0] = np.nanmin(yax) if yrange[0] is None else yrange[0]
-        yrange[1] = np.nanmax(yax) if yrange[1] is None else yrange[1]
-        zrange[0] = np.nanmin(arr) if zrange[0] is None else zrange[0]
-        zrange[1] = np.nanmax(arr) if zrange[1] is None else zrange[1]
-        
-        # Apply log transform if requested
-        if log:
-            title += " (log)"
-            nonzero = np.nonzero(arr)
-            arr[nonzero] = np.log10(arr[nonzero])
-        else:
-            title += " (lin)"
-
-
-        if axes == ("X", "Y"):
-            ax.set_aspect("equal")
-
-        ax.set_xlim(*xrange)
-        ax.set_ylim(*yrange)
-        ax.set_xlabel(axes[0], fontsize=fontsize)
-        ax.set_ylabel(axes[1], fontsize=fontsize)
-        ax.set_title(title, fontsize=fontsize)
-
-        try:
-            p = ax.pcolorfast(xax, yax, arr.T)
-
-            cb_kwargs = {
-                "orientation": "vertical",
-                "pad": 0.07,
-                "shrink": 0.8,
-                "aspect": 16,
-            }
-            cbar = fig.colorbar(p, ax=ax, **cb_kwargs)
-            cbar.set_label(ztitle, fontsize=fontsize)
-
-        except ValueError:  # raised if one of the arrays is empty
-            pass
-
-        return fig, ax
-
-    def cutplot(self, tracks=None, show=True):
-        """
-        Makes a standard figure useful for applying cuts.
-
-        Subplots are:
-        - (X,Y,Number of particles) (simple histogram)
-        - 
-
-        Parameters
-        ----------
-
-        tracks : `~numpy.ndarray` (ntracks, 6), optional
-            Array of tracks to plot. Defaults to the
-            currently selected tracks. 
-
-        show : bool, optional
-            If True, call plt.show() at the end to display the 
-            plot. Default is True. Pass False if this plot is
-            being made as a subplot of another figure.
-
-        """
-
-        if tracks is None:
-            tracks = self.selected_tracks
-
-        fig, axarr = plt.subplots(nrows=2, ncols=2, figsize=(9, 9))
-        fig.subplots_adjust(hspace=0.3, wspace=0.3)
-
-        title = f"Subset {self.current_subset_index}, "
-
-        title += (
-            f"dslice {self.current_subset.current_dslice_index} of "
-            f"{self.current_subset.ndslices} selected, "
-        )
-
-        title += f'\nEtch time: {self.etch_time.m_as(u.min):.1f} min.'
-
-        fig.suptitle(title)
-
-        # X, Y
-        ax = axarr[0][0]
-        self.plot(
-            axes=("X", "Y"),
-            show=False,
-            figax=(fig, ax),
-            xrange=self.current_subset.domain.xrange,
-            yrange=self.current_subset.domain.yrange,
-            tracks=tracks,
-        )
-
-        # D, C
-        ax = axarr[0][1]
-        self.plot(
-            axes=("D", "C"),
-            show=False,
-            figax=(fig, ax),
-            log=True,
-            xrange=self.current_subset.domain.drange,
-            yrange=self.current_subset.domain.crange,
-            tracks=tracks,
-        )
-
-        # X, Y, D
-        ax = axarr[1][0]
-        self.plot(
-            axes=("X", "Y"),
-            quantity='D',
-            show=False,
-            figax=(fig, ax),
-            xrange=self.current_subset.domain.xrange,
-            yrange=self.current_subset.domain.yrange,
-            zrange=self.current_subset.domain.drange,
-            tracks=tracks,
-        )
-
-        # D, E
-        ax = axarr[1][1]
-        self.plot(
-            axes=("D", "E"),
-            show=False,
-            figax=(fig, ax),
-            log=True,
-            xrange=self.current_subset.domain.drange,
-            yrange=self.current_subset.domain.erange,
-            tracks=tracks,
-        )
-
-        if show:
-            plt.show()
-
-        return fig, ax
-
-    def focus_plot(self):
-        """
-        Plot the focus (z coordinate) over the scan. Used to look for
-        abnormalities that may indicate a failed scan.
-        """
-
-        fig, ax = plt.subplots()
-
-        self.plot(
-            axes=("X", "Y", "Z"),
-            figax=(fig, ax),
-            xrange=self.current_subset.domain.xrange,
-            yrange=self.current_subset.domain.yrange,
-        )

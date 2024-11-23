@@ -105,7 +105,7 @@ class Subset(ExportableClassMixin):
 
         return hash(s)
 
-    def set_domain(self, domain: Cut | None) -> None:
+    def set_domain(self, *args, **kwargs) -> None:
         """
         Sets the domain cut
 
@@ -117,10 +117,15 @@ class Subset(ExportableClassMixin):
             domain.
 
         """
-        if domain is None:
-            self.domain = Cut()
 
-        self.domain = domain
+        if len(args)<1 or args[0] is None:
+            self.domain = Cut()
+        elif len(args) == 1:
+            c = args[0]
+        else:
+            c = Cut(**kwargs)
+
+        self.domain = c
 
     def select_dslice(self, dslice: int | None) -> None:
         """Set the currently selected dslice.
@@ -143,7 +148,7 @@ class Subset(ExportableClassMixin):
         else:
             self.current_dslice_index = dslice
 
-    def set_ndslices(self, ndslices):
+    def set_ndslices(self, ndslices:int)->None:
         """
         Sets the number of ndslices
 
