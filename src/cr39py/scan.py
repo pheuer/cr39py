@@ -494,29 +494,28 @@ class Scan(ExportableClassMixin):
     # Data output
     # *************************************************************************
 
-    def frames(self, axes=("X", "Y"), tracks=None):
+    def frames(self, axes:tuple[str]=("X", "Y"),
+                quantity: str|None=None, tracks:np.ndarray|None=None):
         """
         Create a histogram of the currently selected track data
+
+        The following quantities can be used as axes or quantities:
+        - 'X': x position
+        - 'Y': y position
+        - 'D': diameter
+        - 'C': contrast
+        - 'E': ecentricity
+        - 'Z' : z position/lens position during scan
 
         Paramters
         ---------
 
-        axes : tuple of 2 or 3 str
-            The first two values represent the axes of the histogram. If no
-            third value is included, then the resulting histogram is of the
-            number of hits in each  bin. If a third value is included,
-            the histogram will be of that value in each bin
+        axes : tuple(str), optional
+            The axes of the histogram.  The default is ('X', 'Y')
 
-            Chose from the following:
-            'X': x position
-            'Y': y position
-            'D': diameter
-            'C': contrast
-            'E': ecentricity
-            'Z' : z position/lens position during scan
-
-            The default is ('X', 'Y')
-
+        quantity: str, optional
+            The quantity to plot. Default is to plot the number
+            of particles per cell. 
 
         tracks : np.ndarray (optional)
             Tracks data from which to make the histogram. Default
@@ -535,8 +534,8 @@ class Scan(ExportableClassMixin):
         ax1 = _axes[axes[1]].m
 
         # If creating a histogram like the X,Y,D plots
-        if len(axes) == 3:
-            i2 = self.axes_ind[axes[2]]
+        if quantity is not None:
+            i2 = self.axes_ind[quantity]
             weights = tracks[:, i2]
         else:
             weights = None
@@ -791,17 +790,23 @@ class Scan(ExportableClassMixin):
     def plot(
         self,
         axes: tuple[str] | None =None,
-        quantity: str | None =None,
+        quantity: str|None = None,
         tracks=None,
-        xlim: Sequence[float,None] | None  =None,
-        ylim:Sequence[float,None] | None  =None,
-        zlim: Sequence[float,None] | None  =None, 
+        xrange: Sequence[float,None] | None  =None,
+        yrange:Sequence[float,None] | None  =None,
+        zrange: Sequence[float,None] | None  =None, 
         log:bool=False,
         figax=None,
+        show=True,
         
     ):
         """
         Plots a histogram of the track data.
+
+        In addition to the track quantities [X,Y,D,C,E,Z], the following
+        custom quantities can also be plotted: 
+
+        - CHI : The track overlap parameter from Zylstra et al. 2012
 
         Parameters
         ----------
@@ -811,25 +816,26 @@ class Scan(ExportableClassMixin):
             a histogram of tracks will be made. Default is ('X','Y')
 
         quantity: str | None
-            Sets which quantity to plot. Default is None, which will
+            Sets which quantity to plot. The default is None, which will
             result in plotting an unweighted histogram of the number
-            of tracks in each frame.
+            of tracks in each frame. Any of the track quantities are 
+            valid, as are the list of custom quantities above. 
 
         tracks: `~numpy.ndarray` (ntracks,6) (optional)
             Array of tracks to plot. Defaults to the 
             currently selected tracks. 
 
-        xlim: Sequence[float,None] (optional)
+        xrange: Sequence[float,None] (optional)
             Limits for the horizontal axis. Setting either value to
             None will use the minimum or maximum of the data range
             for that value. Default is to plot the full data range.
 
-        ylim: Sequence[float,None] (optional)
+        yrange: Sequence[float,None] (optional)
             Limits for the vertical axis. Setting either value to
             None will use the minimum or maximum of the data range
             for that value. Default is to plot the full data range.
 
-        zlim: Sequence[float,None] (optional)
+        zrange: Sequence[float,None] (optional)
             Limits for the plotted quantity. Setting either value to
             None will use the minimum or maximum of the data range
             for that value. Default is to plot the full data range.
@@ -842,6 +848,11 @@ class Scan(ExportableClassMixin):
             be put. If none is provided, a new figure will be
             created.
 
+        show : bool, optional
+            If True, call plt.show() at the end to display the 
+            plot. Default is True. Pass False if this plot is
+            being made as a subplot of another figure.
+
         Returns
         -------
 
@@ -852,6 +863,7 @@ class Scan(ExportableClassMixin):
         
 
         """
+        fontsize = 16
 
         # If a figure and axis are provided, use those
         if figax is not None:
@@ -860,33 +872,8 @@ class Scan(ExportableClassMixin):
             fig = plt.figure()
             ax = fig.add_subplot()
 
-        fontsize = 16
-
         if axes is None:
             axes = ("X", "Y")
-
-        
-
-        
-        if axes == ("X", "Y", "CHI"):
-            xax, yax, arr = self.overlap_parameter_histogram()
-        else:
-            xax, yax, arr = self.frames(axes=axes, tracks=tracks)
-
-        
-
-        if axes == ("X", "Y"):
-            ax.set_aspect("equal")
-
-        if quantity is not None:
-            ztitle = quantity
-            title = f"{axes[0]}, {axes[1]}, {quantity}"
-        else:
-            ztitle = "# Tracks"
-            title = f"{axes[0]}, {axes[1]}"
-
-        arr[arr == 0] = np.nan
-
 
         if xrange is None:
             xrange = [None, None]
@@ -895,16 +882,33 @@ class Scan(ExportableClassMixin):
         if zrange is None:
             zrange = [None, None]
 
-        # Calculate bounds
-        if xrange[0] is None:
-            xrange[0] = np.nanmin(xax)
-        if xrange[1] is None:
-            xrange[1] = np.nanmax(xax)
-        if yrange[0] is None:
-            yrange[0] = np.nanmin(yax)
-        if yrange[1] is None:
-            yrange[1] = np.nanmax(yax)
+        # Get the requested histogram
+        if quantity == 'CHI':
+            xax, yax, arr = self.overlap_parameter_histogram()
+        else:
+            xax, yax, arr = self.frames(axes=axes, tracks=tracks)
 
+        # Set all 0's in the histogram to NaN so they appear as 
+        # blank white space on the plot
+        arr[arr == 0] = np.nan
+
+        
+        if quantity is None:
+            ztitle = "# Tracks"
+            title = f"{axes[0]}, {axes[1]}"
+        else:
+            ztitle = quantity
+            title = f"{axes[0]}, {axes[1]}, {quantity}"
+
+        # Set any None bounds to the extrema of the ranges
+        xrange[0] = np.nanmin(xax) if xrange[0] is None else xrange[0]
+        xrange[1] = np.nanmax(xax) if xrange[1] is None else xrange[1]
+        yrange[0] = np.nanmin(yax) if yrange[0] is None else yrange[0]
+        yrange[1] = np.nanmax(yax) if yrange[1] is None else yrange[1]
+        zrange[0] = np.nanmin(arr) if zrange[0] is None else zrange[0]
+        zrange[1] = np.nanmax(arr) if zrange[1] is None else zrange[1]
+        
+        # Apply log transform if requested
         if log:
             title += " (log)"
             nonzero = np.nonzero(arr)
@@ -912,9 +916,12 @@ class Scan(ExportableClassMixin):
         else:
             title += " (lin)"
 
+
+        if axes == ("X", "Y"):
+            ax.set_aspect("equal")
+
         ax.set_xlim(*xrange)
         ax.set_ylim(*yrange)
-
         ax.set_xlabel(axes[0], fontsize=fontsize)
         ax.set_ylabel(axes[1], fontsize=fontsize)
         ax.set_title(title, fontsize=fontsize)
@@ -938,7 +945,19 @@ class Scan(ExportableClassMixin):
 
     def cutplot(self, tracks=None):
         """
-        Makes a standard figure with several views of the track data.
+        Makes a standard figure useful for applying cuts.
+
+        Subplots are:
+        - (X,Y,Number of particles) (simple histogram)
+        - 
+
+        Parameters
+        ----------
+
+        tracks : `~numpy.ndarray` (ntracks, 6), optional
+            Array of tracks to plot. Defaults to the
+            currently selected tracks. 
+
         """
 
         if tracks is None:
@@ -951,8 +970,11 @@ class Scan(ExportableClassMixin):
 
         title += (
             f"dslice {self.current_subset.current_dslice_index} of "
-            f"{self.current_subset.ndslices} selected."
+            f"{self.current_subset.ndslices} selected, "
         )
+
+        title += f'\nEtch time: {self.etch_time.m_as(u.min):.1f} min.'
+
         fig.suptitle(title)
 
         # X, Y
@@ -981,7 +1003,8 @@ class Scan(ExportableClassMixin):
         # X, Y, D
         ax = axarr[1][0]
         self.plot(
-            axes=("X", "Y", "D"),
+            axes=("X", "Y"),
+            quantity='D',
             show=False,
             figax=(fig, ax),
             xrange=self.current_subset.domain.xrange,
