@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from fast_histogram import histogram2d
 
+from collections.abc import Sequence
+
 from cr39py.cli import _cli_input
 from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.core.units import unit_registry as u
@@ -15,7 +17,6 @@ from cr39py.cpsa import read_cpsa
 from cr39py.cut import Cut
 from cr39py.response import TwoParameterModel
 from cr39py.subset import Subset
-
 
 class Scan(ExportableClassMixin):
     """
@@ -63,11 +64,6 @@ class Scan(ExportableClassMixin):
     ]
 
     def __init__(self):
-
-        # Store figures once created for blitting
-        self.plotfig = None
-        self.cutplotfig = None
-
         self.current_subset_index = 0
         self.subsets = []
 
@@ -794,30 +790,65 @@ class Scan(ExportableClassMixin):
 
     def plot(
         self,
-        axes=("X", "Y"),
-        log=False,
-        clear=False,
-        xrange=None,
-        yrange=None,
-        zrange=None,
-        show=True,
-        figax=None,
+        axes: tuple[str] | None =None,
+        quantity: str | None =None,
         tracks=None,
+        xlim: Sequence[float,None] | None  =None,
+        ylim:Sequence[float,None] | None  =None,
+        zlim: Sequence[float,None] | None  =None, 
+        log:bool=False,
+        figax=None,
+        
     ):
         """
-        Plots a histogram of the track data
+        Plots a histogram of the track data.
 
         Parameters
         ----------
 
-        axes: tuple of str
-            Indicates which axes to plot. If two axes are provided,
-            a histogram of tracks will be made. If three axes are
-            provided,
+        axes: tuple of str, optional
+            Sets which axes to plot. If two axes are provided,
+            a histogram of tracks will be made. Default is ('X','Y')
+
+        quantity: str | None
+            Sets which quantity to plot. Default is None, which will
+            result in plotting an unweighted histogram of the number
+            of tracks in each frame.
+
+        tracks: `~numpy.ndarray` (ntracks,6) (optional)
+            Array of tracks to plot. Defaults to the 
+            currently selected tracks. 
+
+        xlim: Sequence[float,None] (optional)
+            Limits for the horizontal axis. Setting either value to
+            None will use the minimum or maximum of the data range
+            for that value. Default is to plot the full data range.
+
+        ylim: Sequence[float,None] (optional)
+            Limits for the vertical axis. Setting either value to
+            None will use the minimum or maximum of the data range
+            for that value. Default is to plot the full data range.
+
+        zlim: Sequence[float,None] (optional)
+            Limits for the plotted quantity. Setting either value to
+            None will use the minimum or maximum of the data range
+            for that value. Default is to plot the full data range.
+
+        log : bool (optional)
+            If ``True``, plot the log of the quantity.
+
+        figax : tuple(Fig,Ax), optional
+            If a tuple of `~matplotlib.pyplot.Figure`
+
+        
+
+
 
         tracks : tracks array to plot
 
         """
+        if axes is None:
+            axes = ("X", "Y")
 
         if xrange is None:
             xrange = [None, None]
@@ -836,19 +867,16 @@ class Scan(ExportableClassMixin):
         # If a figure and axis are provided, use those
         if figax is not None:
             fig, ax = figax
-        elif self.plotfig is None or clear:
+        else:
             fig = plt.figure()
             ax = fig.add_subplot()
-            self.plotfig = [fig, ax]
-        else:
-            fig, ax = self.plotfig
 
-        if axes[0:2] == ("X", "Y"):
+        if axes == ("X", "Y"):
             ax.set_aspect("equal")
 
-        if len(axes) == 3:
-            ztitle = axes[2]
-            title = f"{axes[0]}, {axes[1]}, {axes[2]}"
+        if quantity is not None:
+            ztitle = quantity
+            title = f"{axes[0]}, {axes[1]}, {quantity}"
         else:
             ztitle = "# Tracks"
             title = f"{axes[0]}, {axes[1]}"
@@ -894,9 +922,6 @@ class Scan(ExportableClassMixin):
         except ValueError:  # raised if one of the arrays is empty
             pass
 
-        if show:
-            plt.show()
-
         return fig, ax
 
     def cutplot(self, tracks=None):
@@ -907,12 +932,8 @@ class Scan(ExportableClassMixin):
         if tracks is None:
             tracks = self.selected_tracks
 
-        self.cutplotfig = plt.subplots(nrows=2, ncols=2, figsize=(9, 9))
-        self.cutplotfig[0].subplots_adjust(hspace=0.3, wspace=0.3)
-
-        # Figure tuple contains:
-        # (fig, axarr, bkg)
-        fig, axarr = self.cutplotfig
+        fig, axarr = plt.subplots(nrows=2, ncols=2, figsize=(9, 9))
+        fig.subplots_adjust(hspace=0.3, wspace=0.3)
 
         title = f"Subset {self.current_subset_index}, "
 
