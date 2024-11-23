@@ -13,19 +13,13 @@ from collections.abc import Sequence
 from cr39py.cli import _cli_input
 from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.core.units import unit_registry as u
+from cr39py.core.types import TrackData
 from cr39py.cpsa import read_cpsa
 from cr39py.cut import Cut
 from cr39py.response import TwoParameterModel
 from cr39py.subset import Subset
 
 from IPython import display
-
-from typing import Annotated, TypeVar
-
-
-
-
-TrackData = Annotated[np.ndarray, "(ntracks,6)"]
 
 class Axis(ExportableClassMixin):
 
@@ -420,87 +414,13 @@ class Scan(ExportableClassMixin):
         """
         return self.tracks.shape[0]
 
-    def _get_selected_tracks(self, use_cuts: None | list[int] = None,
-                              invert=False)->TrackData:
-        """
-        Return tracks that meet the current set of specifications,
-        and/or specifications made by the keywords.
-
-        Parameters
-        ----------
-
-        use_cuts : int, list of ints (optional)
-            If provided, only the cuts corresponding to the int or ints
-            provided will be applied. The default is to apply all cuts
-
-        invert : bool (optional)
-            If true, return the inverse of the cuts selected. Default is
-            false.
-
-        Returns
-        -------
-        
-        selected_tracks : `~numpy.ndarray` (ntracks,6) 
-            The selected track array.
-
-        """
-
-        valid_cuts = list(np.arange(len(self.current_subset.cuts)))
-        if use_cuts is None:
-            use_cuts = valid_cuts
-        else:
-            for s in use_cuts:
-                if s not in valid_cuts:
-                    raise ValueError(f"Specified cut index is invalid: {s}")
-        use_cuts = list(use_cuts)
-
-        # boolean mask of tracks to include in the selected tracks
-        include = np.ones(self.ntracks).astype(bool)
-
-        for i, cut in enumerate(self.current_subset.cuts):
-            if i in use_cuts:
-                # Get a boolean array of tracks that are inside this cut
-                x = cut.test(self.tracks)
-
-                # negate to get a list of tracks that are NOT
-                # in the excluded region (unless we are inverting)
-                if not invert:
-                    x = np.logical_not(x)
-                include *= x
-
-        # Regardless of anything else, only show tracks that are within
-        # the domain
-        if self.current_subset.domain is not None:
-            include *= self.current_subset.domain.test(self.tracks)
-
-        # Select only these tracks
-        selected_tracks = self.tracks[include, :]
-
-        # Calculate the bin edges for each dslice
-        # !! note that the tracks are already sorted into order by diameter
-        # when the CR39 data is read in
-        #
-        # Skip if ndslices is 1 (nothing to cut) or if ndslices is None
-        # which indicates to use all of the available ndslices
-        if (
-            self.current_subset.ndslices != 1
-            and self.current_subset.current_dslice_index is not None
-        ):
-            # Figure out the dslice width
-            dbin = int(selected_tracks.shape[0] / self.current_subset.ndslices)
-            # Extract the appropriate portion of the tracks
-            b0 = self.current_subset.current_dslice_index * dbin
-            b1 = b0 + dbin
-            selected_tracks = selected_tracks[b0:b1, :]
-        return selected_tracks
-    
     @cached_property
     def _selected_tracks(self)->TrackData:
         # Save hash of the current subset, only reset tracks
         # property if the subset has changed, or if the framesize has
         # changed
         self._cached_subset_hash = hash(self.current_subset)
-        return self._get_selected_tracks()
+        return self.current_subset.apply_cuts(self.tracks)
 
     def reset_selected_tracks(self):
         """Reset the cached selected tracks"""
@@ -1134,7 +1054,7 @@ class Scan(ExportableClassMixin):
 
             elif x in ["p", "pi"]:
                 if x == "pi":
-                    deselected_tracks = self._get_selected_tracks(invert=True)
+                    deselected_tracks = self.current_subset.apply_cuts(self.tracks, invert=True)
                     self.cutplot(show=True, tracks=deselected_tracks)
                 else:
                     self.cutplot(show=True)

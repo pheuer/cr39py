@@ -35,18 +35,18 @@ def test_get_selected_tracks(cr39scan):
     cr39scan.current_subset.add_cut(Cut(cmin=30))
 
     # Test with all cuts
-    x = cr39scan._get_selected_tracks()
+    x = cr39scan.current_subset.apply_cuts(cr39scan.tracks)
 
     # Test with subset of cuts
-    x = cr39scan._get_selected_tracks(use_cuts=[0])
+    x = cr39scan.current_subset.apply_cuts(cr39scan.tracks,use_cuts=[0])
 
     # Test invert
-    x = cr39scan._get_selected_tracks(invert=True)
+    x = cr39scan.current_subset.apply_cuts(cr39scan.tracks,invert=True)
 
     # Test with ndslices
     cr39scan.current_subset.set_ndslices(5)
     cr39scan.current_subset.select_dslice(0)
-    x = cr39scan._get_selected_tracks()
+    x = cr39scan.current_subset.apply_cuts(cr39scan.tracks)
 
 
 def test_subset(cr39scan):
