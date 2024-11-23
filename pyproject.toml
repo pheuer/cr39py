@@ -27,6 +27,7 @@ dependencies = [
     "fast_histogram",
     "flexparser<0.4", # Pin required by pint
     "h5py >= 3.8.0",
+    "ipython",
     "matplotlib >= 3.7.0",
     "numpy >= 1.24.0",
     'pint>=0.24.3',

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from cr39py.core.units import unit_registry as u
-from cr39py.response import TwoParameterModel
+from cr39py.models.response import TwoParameterModel
 
 
 @pytest.mark.parametrize("diameter", [0.5, 1, 2, 4, 6, 8, 10])
