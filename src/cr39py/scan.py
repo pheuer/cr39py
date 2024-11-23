@@ -467,6 +467,10 @@ class Scan(ExportableClassMixin):
 
         angle: float
             Rotation angle in degrees
+
+        center : tuple[float]
+            Center of rotation. The default is (0,0).
+
         """
 
         x = self.tracks[:, 0] - center[0]
@@ -801,14 +805,12 @@ class Scan(ExportableClassMixin):
         fig, axarr = plt.subplots(nrows=2, ncols=2, figsize=(9, 9))
         fig.subplots_adjust(hspace=0.3, wspace=0.3)
 
-        title = f"Subset {self.current_subset_index}, "
-
-        title += (
+        title = (
+            f"Subset {self.current_subset_index}, "
             f"dslice {self.current_subset.current_dslice_index} of "
             f"{self.current_subset.ndslices} selected, "
+            f'\nEtch time: {self.etch_time.m_as(u.min):.1f} min.'
         )
-
-        title += f'\nEtch time: {self.etch_time.m_as(u.min):.1f} min.'
 
         fig.suptitle(title)
 
