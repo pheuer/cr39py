@@ -838,31 +838,20 @@ class Scan(ExportableClassMixin):
             If ``True``, plot the log of the quantity.
 
         figax : tuple(Fig,Ax), optional
-            If a tuple of `~matplotlib.pyplot.Figure`
+            Tuple of (Figure, Axes) onto which the plot will
+            be put. If none is provided, a new figure will be
+            created.
+
+        Returns
+        -------
+
+        fig, ax : Figure, Axes
+            The matplotlib figure and axes objects with
+            the plot.
 
         
 
-
-
-        tracks : tracks array to plot
-
         """
-        if axes is None:
-            axes = ("X", "Y")
-
-        if xrange is None:
-            xrange = [None, None]
-        if yrange is None:
-            yrange = [None, None]
-        if zrange is None:
-            zrange = [None, None]
-
-        fontsize = 16
-
-        if axes == ("X", "Y", "CHI"):
-            xax, yax, arr = self.overlap_parameter_histogram()
-        else:
-            xax, yax, arr = self.frames(axes=axes, tracks=tracks)
 
         # If a figure and axis are provided, use those
         if figax is not None:
@@ -870,6 +859,21 @@ class Scan(ExportableClassMixin):
         else:
             fig = plt.figure()
             ax = fig.add_subplot()
+
+        fontsize = 16
+
+        if axes is None:
+            axes = ("X", "Y")
+
+        
+
+        
+        if axes == ("X", "Y", "CHI"):
+            xax, yax, arr = self.overlap_parameter_histogram()
+        else:
+            xax, yax, arr = self.frames(axes=axes, tracks=tracks)
+
+        
 
         if axes == ("X", "Y"):
             ax.set_aspect("equal")
@@ -882,6 +886,14 @@ class Scan(ExportableClassMixin):
             title = f"{axes[0]}, {axes[1]}"
 
         arr[arr == 0] = np.nan
+
+
+        if xrange is None:
+            xrange = [None, None]
+        if yrange is None:
+            yrange = [None, None]
+        if zrange is None:
+            zrange = [None, None]
 
         # Calculate bounds
         if xrange[0] is None:
