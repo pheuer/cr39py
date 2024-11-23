@@ -18,6 +18,8 @@ from cr39py.cut import Cut
 from cr39py.response import TwoParameterModel
 from cr39py.subset import Subset
 
+from IPython import display
+
 class Scan(ExportableClassMixin):
     """
     A representation of a piece of CR39 data.
@@ -582,14 +584,18 @@ class Scan(ExportableClassMixin):
         """
         Command line interface for interactively setting up cuts.
         """
-        self.cutplot(show=True)
 
         # This flag keeps track of whether any changes have been made
         # by the CLI, and will be returned when it exits
         changed = False
 
         while True:
+            # Clear IPython output to avoid piling up plots
+            display.clear_output(wait=False)
 
+            # Create a cut plot
+            self.cutplot(show=True)
+            
             print("*********************************************************")
             print(
                 f"Current subset index: {self.current_subset_index} of {np.arange(len(self.subsets))}"
@@ -781,6 +787,7 @@ class Scan(ExportableClassMixin):
             else:
                 print(f"Invalid input: {x}")
 
+
         return changed
 
     # *************************************************************************
@@ -892,7 +899,6 @@ class Scan(ExportableClassMixin):
         # blank white space on the plot
         arr[arr == 0] = np.nan
 
-        
         if quantity is None:
             ztitle = "# Tracks"
             title = f"{axes[0]}, {axes[1]}"
@@ -943,7 +949,7 @@ class Scan(ExportableClassMixin):
 
         return fig, ax
 
-    def cutplot(self, tracks=None):
+    def cutplot(self, tracks=None, show=True):
         """
         Makes a standard figure useful for applying cuts.
 
@@ -957,6 +963,11 @@ class Scan(ExportableClassMixin):
         tracks : `~numpy.ndarray` (ntracks, 6), optional
             Array of tracks to plot. Defaults to the
             currently selected tracks. 
+
+        show : bool, optional
+            If True, call plt.show() at the end to display the 
+            plot. Default is True. Pass False if this plot is
+            being made as a subplot of another figure.
 
         """
 
@@ -1024,6 +1035,9 @@ class Scan(ExportableClassMixin):
             yrange=self.current_subset.domain.erange,
             tracks=tracks,
         )
+
+        if show:
+            plt.show()
 
         return fig, ax
 
