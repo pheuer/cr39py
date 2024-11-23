@@ -6,9 +6,9 @@ import pytest
 
 from cr39py.core.ci import SilentPlotting
 from cr39py.core.units import unit_registry as u
-from cr39py.cut import Cut
-from cr39py.scan import Scan
-from cr39py.subset import Subset
+from cr39py.scan.cut import Cut
+from cr39py.scan.scan import Scan
+from cr39py.scan.subset import Subset
 
 
 @pytest.fixture

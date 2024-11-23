@@ -1,5 +1,5 @@
 from cr39py.core.exportable_class import ExportableClassMixin
-from cr39py.cut import Cut
+from cr39py.scan.cut import Cut
 from cr39py.core.types import TrackData
 import numpy as np
 

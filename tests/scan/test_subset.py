@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from cr39py.cut import Cut
-from cr39py.subset import Subset
+from cr39py.scan.cut import Cut
+from cr39py.scan.subset import Subset
 
 
 def test_save_and_load(tmpdir):

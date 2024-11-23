@@ -10,14 +10,14 @@ from fast_histogram import histogram2d
 
 from collections.abc import Sequence
 
-from cr39py.cli import _cli_input
+from cr39py.scan.cli import _cli_input
 from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.core.units import unit_registry as u
 from cr39py.core.types import TrackData
-from cr39py.cpsa import read_cpsa
-from cr39py.cut import Cut
+from cr39py.scan.cpsa import read_cpsa
+from cr39py.scan.cut import Cut
 from cr39py.response import TwoParameterModel
-from cr39py.subset import Subset
+from cr39py.scan.subset import Subset
 
 from IPython import display
 

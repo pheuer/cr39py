@@ -3,7 +3,7 @@ from pathlib import Path
 import h5py
 import pytest
 
-from cr39py.cut import Cut
+from cr39py.scan.cut import Cut
 
 
 def test_save_and_load(tmpdir):
