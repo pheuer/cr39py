@@ -36,6 +36,13 @@ extensions = [
 autoapi_dirs = ["../../src/cr39py"]
 autoapi_type = ["python"]
 autoapi_member_order = "bysource"
+autoapi_options = [
+    "members",
+    "undoc-members",
+    "show-module-summary",
+    "special-members",
+    "imported-members",
+]
 
 
 intersphinx_mapping = {

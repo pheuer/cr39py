@@ -1,7 +1,6 @@
 """
-@author: Peter Heuer
-
-Adapted in part from code written by Hans Rinderknecht
+This module contains code for handling the MIT CPSA format for CR39
+track data.
 """
 
 from collections import namedtuple
@@ -10,8 +9,10 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
+from cr39py.core.types import TrackData
 
-def read_cpsa(path: Path):
+
+def read_cpsa(path: Path) -> TrackData:
     """Reads a CPSA file.
 
     Parameters
@@ -21,8 +22,8 @@ def read_cpsa(path: Path):
 
     Returns
     -------
-    tracks: np.ndarray
-        Numpy array of tracks.
+    tracks: `~np.ndarray` (ntracks,6)
+       Array of track data.
 
     Notes
     -----

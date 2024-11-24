@@ -66,7 +66,7 @@ def test_subset(cr39scan):
     cr39scan.remove_subset(2)
 
 
-@pytest.mark.parametrize("statistic", ["mean", "min", "max"])
+@pytest.mark.parametrize("statistic", ["mean", "median"])
 def test_track_energy(cr39scan, statistic):
     cr39scan.track_energy("D", statistic)
 
