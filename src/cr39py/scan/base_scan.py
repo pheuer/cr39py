@@ -170,7 +170,7 @@ class Scan(ExportableClassMixin):
         """
         Initialize a Scan object from an array of tracks.
 
-        Paramters
+        Parameters
         ---------
         tracks : np.ndarray (ntracks,6)
             Array of tracks with [X,Y,D,C,E,Z] values.
@@ -197,7 +197,7 @@ class Scan(ExportableClassMixin):
         """
         Initialize a Scan object from a CPSA file.
 
-        Paramters
+        Parameters
         ---------
         path : `~pathlib.Path`
             Path to the CPSA file.
@@ -468,7 +468,7 @@ class Scan(ExportableClassMixin):
         Rotates the tracks in the XY plane by `rot` around
         a point
 
-        Paramters
+        Parameters
         ---------
 
         angle: float
@@ -530,7 +530,7 @@ class Scan(ExportableClassMixin):
         - 'E': ecentricity
         - 'Z' : z position/lens position during scan
 
-        Paramters
+        Parameters
         ---------
 
         axes : tuple(str), optional
