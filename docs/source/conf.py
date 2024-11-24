@@ -31,6 +31,7 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 
+
 autoapi_dirs = ["../src/cr39py"]
 autoapi_type = ["python"]
 
@@ -44,8 +45,19 @@ intersphinx_disabled_domains = ["std"]
 templates_path = ["_templates"]
 
 # -- Options for HTML output
-
 html_theme = "sphinx_rtd_theme"
+html_logo = "./_static/logo_190px.png"
+html_static_path = ["_static"]
+html_theme_options = {
+    "logo_only": True,
+    "includehidden": False,
+}
 
 # -- Options for EPUB output
 epub_show_urls = "footnote"
+
+
+# sphinx.ext.autodoc
+
+autoclass_content = "both"
+autodoc_typehints_format = "short"

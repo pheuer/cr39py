@@ -1,6 +1,6 @@
 **********************************
-Scan (`cr39py.scan`)
+Subset (`cr39py.scan.subset`)
 **********************************
 
-.. automodule:: cr39py.scan
+.. automodule:: cr39py.scan.subset
    :members:

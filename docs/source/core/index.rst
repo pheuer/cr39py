@@ -1,6 +1,5 @@
 **********************************
-Cut (`cr39py.cut`)
+Core (`cr39py.core`)
 **********************************
 
-.. automodule:: cr39py.cut
-   :members:
+This is the Core index file

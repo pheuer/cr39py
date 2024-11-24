@@ -1,6 +1,6 @@
 **********************************
-Response (`cr39py.response`)
+CPSA (`cr39py.scan.cpsa`)
 **********************************
 
-.. automodule:: cr39py.response
+.. automodule:: cr39py.scan.cpsa
    :members:
