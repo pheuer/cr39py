@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 from cr39py.core.ci import SilentPlotting
+from cr39py.core.data import data_dir
 from cr39py.core.units import unit_registry as u
 from cr39py.scan.base_scan import Scan
 from cr39py.scan.cut import Cut
@@ -13,7 +14,6 @@ from cr39py.scan.subset import Subset
 
 @pytest.fixture
 def cr39scan():
-    data_dir = Path(importlib.resources.files("cr39py")).parent.parent / Path("data")
     cpsa_path = data_dir / Path("test_alphas.cpsa")
     return Scan.from_cpsa(cpsa_path, etch_time=120)
 
