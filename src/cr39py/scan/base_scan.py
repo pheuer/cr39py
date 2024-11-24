@@ -1,3 +1,7 @@
+"""
+The `~cr39py.scan` module contains the `~cr39py.scan.Scan` class, which represents a scan of an etched piece of CR39.
+"""
+
 import copy
 import os
 from functools import cached_property
@@ -21,7 +25,9 @@ from cr39py.scan.subset import Subset
 
 from IPython import display
 
-class Axis(ExportableClassMixin):
+__all__  = ['Scan']
+
+class _Axis(ExportableClassMixin):
 
     _exportable_attributes = ["ind", 
         '_unit', '_default_range', 'framesize']
@@ -129,12 +135,12 @@ class Scan(ExportableClassMixin):
     """
 
     
-    axes = {'X': Axis(ind=0, unit=u.cm, default_range=(None, None, None)),
-               'Y': Axis(ind=1, unit=u.cm, default_range=(None, None, None)),
-               'D': Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5)),
-               'C': Axis(ind=3, unit=u.dimensionless, default_range=(0, 80, 1)),
-               'E': Axis(ind=4, unit=u.dimensionless, default_range=(0, 50, 1)),
-               'Z': Axis(ind=5, unit=u.um, default_range=(None, None, None)),
+    axes = {'X': _Axis(ind=0, unit=u.cm, default_range=(None, None, None)),
+               'Y': _Axis(ind=1, unit=u.cm, default_range=(None, None, None)),
+               'D': _Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5)),
+               'C': _Axis(ind=3, unit=u.dimensionless, default_range=(0, 80, 1)),
+               'E': _Axis(ind=4, unit=u.dimensionless, default_range=(0, 50, 1)),
+               'Z': _Axis(ind=5, unit=u.um, default_range=(None, None, None)),
                }
 
     _exportable_attributes = [
