@@ -1,3 +1,17 @@
+"""
+The `~cr39py.cut` module contains the `~cr39py.cut.Cut` class, which represents a CR39 track cut.
+
+A cut defines a region in which tracks should be excluded from the analysis. For example, a cut defined by
+
+>>> Cut(cmin=30)
+
+will exclude all tracks with contrast greater than 30%, while
+
+>>> Cut(dmax=2, xmin=0)
+
+will exclude all tracks with diameters less than 2 um and x positions greater than x=0.
+"""
+
 import numpy as np
 
 from cr39py.core.exportable_class import ExportableClassMixin
@@ -141,9 +155,13 @@ class Cut(ExportableClassMixin):
     def __getattr__(self, key):
         """Access bounds of the cut.
 
-        Allows bounds to be accessed as attributes, e.g.
+        Allows bounds to be accessed as attributes
 
-        ``cut.dmax = cut.bounds['dmax]``
+        Examples
+        --------
+
+        >>> cut.dmax = cut.bounds['dmax]
+
         """
 
         if key in self.bounds.keys():
@@ -189,7 +207,8 @@ class Cut(ExportableClassMixin):
 
         Examples
         --------
-        ``cut.update(xmin=-1, cmax=20)``
+
+        >>> cut.update(xmin=-1, cmax=20)
         """
         for key, val in bounds.items():
             _key = key.lower()

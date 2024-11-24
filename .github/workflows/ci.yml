@@ -5,7 +5,7 @@ on:
     branches:
     - main
   pull_request:
-    
+
 
 jobs:
 
@@ -30,7 +30,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version}}
       uses: actions/setup-python@v3
       with:
@@ -41,7 +41,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install -e .
-    
+
     - name: Test with pytest
       run: |
         pytest
