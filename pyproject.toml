@@ -45,7 +45,7 @@ tests = [
 where = ["src"]
 
 [tool.codespell]
-#skip = ''
+skip = '*.ipynb'
 # Add false positives found by codespell to ignore-words-list
 ignore-words-list = """
 hax,
