@@ -43,3 +43,10 @@ tests = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.codespell]
+#skip = ''
+# Add false positives found by codespell to ignore-words-list
+ignore-words-list = """
+hax,
+vax"""

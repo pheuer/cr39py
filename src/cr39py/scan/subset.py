@@ -12,10 +12,11 @@ the index of a particular dslice to show.
 
 """
 
-from cr39py.core.exportable_class import ExportableClassMixin
-from cr39py.scan.cut import Cut
-from cr39py.core.types import TrackData
 import numpy as np
+
+from cr39py.core.exportable_class import ExportableClassMixin
+from cr39py.core.types import TrackData
+from cr39py.scan.cut import Cut
 
 # TODO: Eliminate the domain? Why not just have that be another cut in the cut list...
 
@@ -134,7 +135,7 @@ class Subset(ExportableClassMixin):
 
         """
 
-        if len(args)<1 or args[0] is None:
+        if len(args) < 1 or args[0] is None:
             self.domain = Cut()
         elif len(args) == 1:
             c = args[0]
@@ -164,7 +165,7 @@ class Subset(ExportableClassMixin):
         else:
             self.current_dslice_index = dslice
 
-    def set_ndslices(self, ndslices:int)->None:
+    def set_ndslices(self, ndslices: int) -> None:
         """
         Sets the number of ndslices
 
@@ -273,9 +274,9 @@ class Subset(ExportableClassMixin):
         else:
             self.cuts[i] = cut
 
-
-    def apply_cuts(self, tracks:TrackData, use_cuts:list[int]|None=None,
-                   invert:bool=False)->TrackData:
+    def apply_cuts(
+        self, tracks: TrackData, use_cuts: list[int] | None = None, invert: bool = False
+    ) -> TrackData:
         """
         Applies the cuts to the provided track array.
 
@@ -291,13 +292,13 @@ class Subset(ExportableClassMixin):
 
         invert : bool (optional)
             If True, return the inverse of the cuts selected, i.e. the
-            tracks that would otherwise be excluded. The default is 
-            False. 
+            tracks that would otherwise be excluded. The default is
+            False.
 
         Returns
         -------
-        
-        selected_tracks : `~numpy.ndarray` (ntracks,6) 
+
+        selected_tracks : `~numpy.ndarray` (ntracks,6)
             The selected track array.
 
         """
@@ -312,9 +313,11 @@ class Subset(ExportableClassMixin):
             use_cuts = list(use_cuts)
             for s in use_cuts:
                 if s not in valid_cuts:
-                    raise ValueError(f"Specified cut index is invalid: {s}. "
-                                     f"Valid cuts are {valid_cuts}")
-        
+                    raise ValueError(
+                        f"Specified cut index is invalid: {s}. "
+                        f"Valid cuts are {valid_cuts}"
+                    )
+
         # boolean mask of tracks to include in the selected tracks
         ntracks = tracks.shape[0]
         include = np.ones(ntracks).astype(bool)
@@ -325,7 +328,7 @@ class Subset(ExportableClassMixin):
                 x = cut.test(tracks)
 
                 # negate to get a list of tracks that are NOT
-                # in the excluded region 
+                # in the excluded region
                 include *= np.logical_not(x)
 
         # Regardless of anything else, only show tracks that are within
@@ -338,22 +341,19 @@ class Subset(ExportableClassMixin):
             selected_tracks = tracks[~include, :]
         else:
             selected_tracks = tracks[include, :]
-        
+
         # Calculate the bin edges for each dslice
         # !! note that the tracks are already sorted into order by diameter
         # when the CR39 data is read in
         #
         # Skip if ndslices is 1 (nothing to cut) or if ndslices is None
         # which indicates to use all of the available ndslices
-        if (
-            self.ndslices != 1
-            and self.current_dslice_index is not None
-        ):
+        if self.ndslices != 1 and self.current_dslice_index is not None:
             # Figure out the dslice width
             dbin = int(selected_tracks.shape[0] / self.ndslices)
             # Extract the appropriate portion of the tracks
             b0 = self.current_dslice_index * dbin
             b1 = b0 + dbin
             selected_tracks = selected_tracks[b0:b1, :]
-        
+
         return selected_tracks

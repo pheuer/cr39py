@@ -29,13 +29,13 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    'autoapi.extension',
+    "autoapi.extension",
 ]
 
 # sphinx-autoapi
 autoapi_dirs = ["../../src/cr39py"]
 autoapi_type = ["python"]
-autoapi_member_order = 'bysource'
+autoapi_member_order = "bysource"
 
 
 intersphinx_mapping = {
@@ -63,4 +63,3 @@ epub_show_urls = "footnote"
 
 autoclass_content = "both"
 autodoc_typehints_format = "short"
-

@@ -40,7 +40,7 @@ class ExportableClassMixin:
 
         group.attrs["type"] = "ExportableClassMixin"
         # Save the module location and the name of the class
-        # which will be used to retrive it
+        # which will be used to retrieve it
         group.attrs["class_module"] = str(obj.__class__.__module__)
         group.attrs["class_name"] = str(obj.__class__.__name__)
         group.attrs["timestamp"] = datetime.datetime.now().isoformat()
@@ -60,7 +60,7 @@ class ExportableClassMixin:
 
             group[name].attrs["type"] = "ExportableClassMixin"
             # Save the module location and the name of the class
-            # which will be used to retrive it
+            # which will be used to retrieve it
             group[name].attrs["class_module"] = str(obj.__class__.__module__)
             group[name].attrs["class_name"] = str(obj.__class__.__name__)
 
