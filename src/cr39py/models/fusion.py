@@ -140,6 +140,20 @@ def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
         return r
 
 
+def yield_ratio(reaction1: str, reaction2: str, tion: u.Quantity) -> float:
+    """
+    Calculate the yield ratio between two nuclear reactions at a given ion temperature.
+
+    Parameters
+    ----------
+    """
+
+    r1 = reactivity(reaction1, tion=tion)
+    r2 = reactivity(reaction2, tion=tion)
+
+    return (r1 / r2).m_as(u.dimensionless)
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
