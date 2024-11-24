@@ -10,7 +10,9 @@ from cr39py.core.data import get_resource_path
 from cr39py.core.units import u
 
 
-def cross_section(reaction: str) -> tuple[u.Quantity]:
+def cross_section(
+    reaction: str, energies: u.Quantity | None = None
+) -> tuple[u.Quantity]:
     """
     The fusion cross section for a given nuclear reaction.
 
@@ -25,6 +27,10 @@ def cross_section(reaction: str) -> tuple[u.Quantity]:
         - 'D(D,p)'
         - '3He(D,p)'
 
+    energies : u.Quantity, optional
+        Energy axis over which to interpolate the cross section.
+        The default goes from 50-20,000 eV in 50 eV steps.
+
     Returns
     -------
 
@@ -35,6 +41,10 @@ def cross_section(reaction: str) -> tuple[u.Quantity]:
         Cross-section
 
     """
+
+    if energies is None:
+        energies = np.linspace(50, 2e4, 50) * u.eV
+
     files = {
         "D(D,n)": "D(D,n)He-3.h5",
         "D(D,p)": "D(D,p)T.h5",
@@ -48,8 +58,10 @@ def cross_section(reaction: str) -> tuple[u.Quantity]:
 
     path = get_resource_path(files[reaction])
     with h5py.File(path, "r") as f:
-        energies = f["energy"][:] * u.eV
-        xs = f["SIG"][:] * u.m**2
+        _energies = f["energy"][:]  # eV
+        xs = f["SIG"][:]  # m^2
+
+    xs = np.interp(energies.m_as(u.eV), _energies, xs) * u.m**2
 
     return energies, xs
 
@@ -71,9 +83,9 @@ def reduced_mass(reaction: str) -> float:
     return m1 * m2 / (m1 + m2)
 
 
-def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
+def reactivity(reaction: str, tion: u.Quantity | None = None) -> tuple[u.Quantity]:
     """
-    The fusion reactivity for a nuclear reaction at a given ion temperature.
+    The fusion reactivity for a nuclear reaction.
 
     Parameters
     ----------
@@ -82,8 +94,9 @@ def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
         The nuclear reaction. See valid reactions on
         `~cr39py.models.fusion.cross_section`.
 
-    tion : u.Quantity, eV
-        Ion temperature.
+    tion : u.Quantity
+        Ion temperatures  over which to calculate the
+        reactivity.
 
     Returns
     -------
@@ -104,10 +117,37 @@ def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
     """
     mu = reduced_mass(reaction)
     energies, xs = cross_section(reaction)
-    k_B = 1.38e-23 * u.J / u.K
+    k_B = 1.38e-23  # J/K
+
+    if tion is None:
+        tion = np.linspace(1, 20, num=0.25) * u.keV
+
+    if tion.ndim == 0:
+        tion = np.array([tion.m]) * tion.u
+
+    tion = tion.m_as(u.K)[:, None]
+
+    print(tion.shape)
+    E = energies.m_as(u.J)
+
+    const = 4 / np.sqrt(2 * np.pi * mu) / ((k_B * tion) ** 1.5)
+
+    integrand = xs.m_as(u.m**2) * E * np.exp(-E / k_B / tion)
+
+    print(integrand.shape)
+    r = const * np.trapezoid(integrand, x=E, axis=1) * u.m**3 / u.s
+    print(r)
+    return energies, r
 
     # TODO: do the calculation: https://scipython.com/blog/nuclear-fusion-cross-sections/
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     print(reduced_mass("3He(D,p)"))
+
+    e, r = reactivity("D(D,n)", 5 * u.keV)
+
+    fig, ax = plt.subplots()
+    ax.plot(e.m_as(u.keV), r.m_as(u.cm**3 / u.s))
