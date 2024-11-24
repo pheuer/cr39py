@@ -9,7 +9,7 @@ will exclude all tracks with contrast greater than 30%, while
 
 >>> Cut(dmax=2, xmin=0)
 
-will exlude all tracks with diameters less than 2 um and x positions greater than x=0.
+will exclude all tracks with diameters less than 2 um and x positions greater than x=0.
 """
 
 import numpy as np

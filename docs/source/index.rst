@@ -14,13 +14,13 @@ CR39 py is a package for analyzing CR39 particle track data.
 
    Usage <usage>
 
+   API <autoapi/index>
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Modules
 
-   Core <core/index>
-   Models <models/index>
-   Scan <scan/index>
-   
 
+.. nbgallery::
+   :caption: Example Notebooks
+   :name: example-gallery
+
+
+   notebooks/applying_cuts_to_a_cpsa_file

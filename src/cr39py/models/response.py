@@ -34,7 +34,7 @@ class TwoParameterModel:
     a response function for protons, deuterons, tritons, and alphas.
     """
 
-    # Response coefficents for protons, deuterons, tritions, and alphas
+    # Response coefficients for protons, deuterons, tritions, and alphas
     # From Table 1 of Lahmann et al. 2020 RSI
     _data = {
         "p": {"Z": 1, "A": 1, "k": 0.7609, "n": 1.497},

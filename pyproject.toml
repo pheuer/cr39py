@@ -43,3 +43,11 @@ tests = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.codespell]
+# Skip ipynb files because executed files have lots of strange symbols in them.
+skip = '*.ipynb'
+# Add false positives found by codespell to ignore-words-list
+ignore-words-list = """
+hax,
+vax"""

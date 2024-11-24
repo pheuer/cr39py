@@ -1,9 +1,11 @@
 """
-The `~cr39py.scan` module contains the `~cr39py.scan.Scan` class, which represents a scan of an etched piece of CR39.
+The `~cr39py.scan.base_scan` module contains the `~cr39py.scan.base_scan.Scan` class, which represents
+a scan of an etched piece of CR39.
 """
 
 import copy
 import os
+from collections.abc import Sequence
 from functools import cached_property
 from pathlib import Path
 
@@ -12,29 +14,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 from fast_histogram import histogram2d
 
-from collections.abc import Sequence
-
-from cr39py.scan.cli import _cli_input
 from cr39py.core.exportable_class import ExportableClassMixin
-from cr39py.core.units import unit_registry as u
 from cr39py.core.types import TrackData
+from cr39py.core.units import unit_registry as u
+from cr39py.models.response import TwoParameterModel
 from cr39py.scan.cpsa import read_cpsa
 from cr39py.scan.cut import Cut
-from cr39py.models.response import TwoParameterModel
 from cr39py.scan.subset import Subset
 
-from IPython import display
+__all__ = ["Scan"]
 
-__all__  = ['Scan']
 
 class _Axis(ExportableClassMixin):
 
-    _exportable_attributes = ["ind", 
-        '_unit', '_default_range', 'framesize']
+    _exportable_attributes = ["ind", "_unit", "_default_range", "framesize"]
 
-    def __init__(self, ind=None, unit=None, 
-                default_range=(None,None,None))->None:
-        
+    def __init__(self, ind=None, unit=None, default_range=(None, None, None)) -> None:
+
         # These parameters are intended to not be mutable
         self._ind = ind
         self._unit = unit
@@ -42,11 +38,13 @@ class _Axis(ExportableClassMixin):
         self.framesize = None
 
     @property
-    def ind(self)->int:
+    def ind(self) -> int:
         return self._ind
+
     @property
     def unit(self):
         return self._unit
+
     @property
     def default_range(self):
         """
@@ -55,7 +53,7 @@ class _Axis(ExportableClassMixin):
         """
         return self._default_range
 
-    def setup(self, tracks:TrackData)->None:
+    def setup(self, tracks: TrackData) -> None:
         """
         Setup the axes for the provided track array.
 
@@ -67,22 +65,22 @@ class _Axis(ExportableClassMixin):
         """
         self._init_framesize(tracks)
 
-    def _init_framesize(self, tracks:TrackData )->None:
+    def _init_framesize(self, tracks: TrackData) -> None:
         """
         Calculates an initial framesize.
         """
         framesize = self.default_range[2]
         ntracks = tracks.shape[0]
-        
+
         if framesize is None:
             nbins = int(np.clip(np.sqrt(ntracks) / 20, 20, 200))
             minval = np.min(tracks[:, self.ind])
             maxval = np.max(tracks[:, self.ind])
             framesize = (maxval - minval) / nbins
-        
+
         self.framesize = framesize * self.unit
 
-    def axis(self, tracks:TrackData, units:bool=True)->np.ndarray | u.Quantity:
+    def axis(self, tracks: TrackData, units: bool = True) -> np.ndarray | u.Quantity:
         """
         Axis calculated for the provided array of tracks.
 
@@ -108,17 +106,12 @@ class _Axis(ExportableClassMixin):
         if maxval is None:
             maxval = np.max(tracks[:, self.ind])
 
-        ax =  np.arange(minval, maxval, 
-                        self.framesize.m_as(self.unit))
-        
+        ax = np.arange(minval, maxval, self.framesize.m_as(self.unit))
+
         if units:
             ax *= self.unit
-        
+
         return ax
-            
-
-
-    
 
 
 class Scan(ExportableClassMixin):
@@ -134,43 +127,69 @@ class Scan(ExportableClassMixin):
     as a histogram for further data analysis.
     """
 
-    
-    axes = {'X': _Axis(ind=0, unit=u.cm, default_range=(None, None, None)),
-               'Y': _Axis(ind=1, unit=u.cm, default_range=(None, None, None)),
-               'D': _Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5)),
-               'C': _Axis(ind=3, unit=u.dimensionless, default_range=(0, 80, 1)),
-               'E': _Axis(ind=4, unit=u.dimensionless, default_range=(0, 50, 1)),
-               'Z': _Axis(ind=5, unit=u.um, default_range=(None, None, None)),
-               }
+    _axes = {
+        "X": _Axis(ind=0, unit=u.cm, default_range=(None, None, None)),
+        "Y": _Axis(ind=1, unit=u.cm, default_range=(None, None, None)),
+        "D": _Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5)),
+        "C": _Axis(ind=3, unit=u.dimensionless, default_range=(0, 80, 1)),
+        "E": _Axis(ind=4, unit=u.dimensionless, default_range=(0, 50, 1)),
+        "Z": _Axis(ind=5, unit=u.um, default_range=(None, None, None)),
+    }
 
     _exportable_attributes = [
-        "tracks",
-        "axes",
-        "framesize",
-        "subsets",
-        "current_subset_index",
-        "etch_time",
+        "_tracks",
+        "_axes",
+        "_subsets",
+        "_current_subset_index",
+        "_etch_time",
     ]
 
-    def __init__(self)->None:
-        self.current_subset_index = 0
-        self.subsets = []
+    def __init__(self) -> None:
+        self._current_subset_index = 0
+        self._subsets = []
 
-        self.tracks = None
+        self._tracks = None
 
         # Etch time, u.Quantity
-        self.etch_time = None
+        self._etch_time = None
+
+    @property
+    def tracks(self) -> TrackData:
+        """
+        The array of tracks in the scan.
+
+        The track array has shape (ntracks,6), where each track has the
+        values [X,Y,D,C,E,Z].
+
+        Returns
+        -------
+        tracks : `~numpy.ndarray` (ntracks,6)
+            Track array
+        """
+        return self._tracks
+
+    @property
+    def etch_time(self) -> u.Quantity:
+        """ "
+        The cumulative track etch time for the scan.
+
+        Returns
+        -------
+        etch_time : u.Quantity
+            Etch time
+        """
+        return self._etch_time
 
     # **********************************
     # Class Methods for initialization
     # **********************************
 
     @classmethod
-    def from_tracks(cls, tracks:TrackData, etch_time: float):
+    def from_tracks(cls, tracks: TrackData, etch_time: float):
         """
         Initialize a Scan object from an array of tracks.
 
-        Paramters
+        Parameters
         ---------
         tracks : np.ndarray (ntracks,6)
             Array of tracks with [X,Y,D,C,E,Z] values.
@@ -180,15 +199,17 @@ class Scan(ExportableClassMixin):
         """
         obj = cls()
 
-        obj.etch_time = etch_time * u.min
-        obj.tracks = tracks
+        obj._etch_time = etch_time * u.min
+        obj._tracks = tracks
 
         # Initialize the axes based on the provided tracks
-        for ax in obj.axes.values():
-            ax.setup(obj.tracks)
+        for ax in obj._axes.values():
+            ax.setup(obj._tracks)
 
         # Initialize the list of subsets with a single subset to start.
-        obj.subsets = [Subset(),]
+        obj._subsets = [
+            Subset(),
+        ]
 
         return obj
 
@@ -197,7 +218,7 @@ class Scan(ExportableClassMixin):
         """
         Initialize a Scan object from a CPSA file.
 
-        Paramters
+        Parameters
         ---------
         path : `~pathlib.Path`
             Path to the CPSA file.
@@ -213,7 +234,7 @@ class Scan(ExportableClassMixin):
     # **********************************
     # Framesize setup
     # **********************************
-    def set_framesize(self, ax_key:str, framesize: float | u.Quantity)->None:
+    def set_framesize(self, ax_key: str, framesize: float | u.Quantity) -> None:
         """
         Sets the bin width for a given axis.
 
@@ -234,17 +255,17 @@ class Scan(ExportableClassMixin):
         # If no unit is supplied, assume the
         # default units for this axis
         if not isinstance(framesize, u.Quantity):
-            framesize *= self.axes[ax_key].unit
+            framesize *= self._axes[ax_key].unit
 
         if ax_key in ["X", "Y"]:
             self.set_framesize("XY", framesize)
         elif ax_key == "XY":
-            self.axes["X"].framesize = framesize
-            self.axes["Y"].framesize = framesize
+            self._axes["X"].framesize = framesize
+            self._axes["Y"].framesize = framesize
         else:
-            self.axes[ax_key].framesize = framesize
+            self._axes[ax_key].framesize = framesize
 
-    def optimize_xy_framesize(self, tracks_per_frame_goal:int=10)->None:
+    def optimize_xy_framesize(self, tracks_per_frame_goal: int = 10) -> None:
         """
         Optimizes XY framesize for a given tracks per frame.
 
@@ -259,7 +280,7 @@ class Scan(ExportableClassMixin):
         """
 
         # initialize with current framesize
-        framesize = self.axes['X'].framesize
+        framesize = self._axes["X"].framesize
 
         # Estimate the ideal framesize so that the median bin has some
         # number of tracks in it
@@ -303,21 +324,33 @@ class Scan(ExportableClassMixin):
 
             self.set_framesize("XY", framesize)
 
-    
-
     # ************************************************************************
     # Manipulate Subsets
     # ************************************************************************
 
     @property
-    def current_subset(self)->None:
-        return self.subsets[self.current_subset_index]
+    def current_subset(self) -> Subset:
+        """
+        The currently selected subset object.
+        """
+        return self._subsets[self._current_subset_index]
 
     @property
-    def nsubsets(self)->None:
-        return len(self.subsets)
+    def nsubsets(self) -> int:
+        """
+        The current number of subsets.
+        """
+        return len(self._subsets)
 
-    def select_subset(self, i):
+    def select_subset(self, i: int) -> None:
+        """
+        Select a subset based on its index.
+
+        Parameters
+        ----------
+        i : int
+            Index of the subset to select
+        """
         if i > self.nsubsets - 1 or i < -self.nsubsets:
             raise ValueError(
                 f"Cannot select subset {i}, there are only " f"{self.nsubsets} subsets."
@@ -326,33 +359,59 @@ class Scan(ExportableClassMixin):
             # Handle negative indexing
             if i < 0:
                 i = self.nsubsets + i
-            self.current_subset_index = i
+            self._current_subset_index = i
 
-    def add_subset(self, *args:Subset)->None:
+    def add_subset(self, *args: Subset) -> None:
+        """
+        Adds a subset to the list.
+
+        If no argument is provided, an empty subset
+        will be created and added.
+
+        Parameters
+        ----------
+        subset : `~cr39py.scan.subset.Subset`
+            Subset to add.
+        """
         if len(args) == 1:
             subset = args[0]
         elif len(args) == 0:
             subset = Subset()
-        self.subsets.append(subset)
+        self._subsets.append(subset)
 
-    def remove_subset(self, i:int)->None:
+    def remove_subset(self, i: int) -> None:
+        """
+        Remove a subset based on its index.
+
+        Parameters
+        ----------
+        i : int
+            Index of the subset to remove.
+
+        Raises
+        ------
+        ValueError
+            If index exceeds the number of subsets defined,
+            or if the index corresponds to the currently selected
+            subset, which cannot be removed.
+        """
         if i > self.nsubsets - 1:
             raise ValueError(
                 f"Cannot remove the {i} subset, there are only "
-                f"{self.subsets} subsets."
+                f"{self._subsets} subsets."
             )
 
-        elif i == self.current_subset_index:
+        elif i == self._current_subset_index:
             raise ValueError("Cannot remove the currently selected subset.")
 
         else:
-            self.subsets.pop(i)
+            self._subsets.pop(i)
 
     # ************************************************************************
     # Manipulate Cuts
     # These methods are all wrapers for methods on the current selected Subset
     # ************************************************************************
-    def set_domain(self, *args, **kwargs)->None:
+    def set_domain(self, *args, **kwargs) -> None:
         """
         Sets the domain cut on the currently selected subset.
 
@@ -361,16 +420,16 @@ class Scan(ExportableClassMixin):
         """
         self.current_subset.set_domain(*args, **kwargs)
 
-    def select_dslice(self, dslice: int | None)->None:
+    def select_dslice(self, dslice: int | None) -> None:
         """
-        Select a new dslice by index. 
+        Select a new dslice by index.
 
         See docstring for
         `~cr39py.subset.Subset.select_dslice`
         """
         self.current_subset.select_dslice(dslice)
 
-    def set_ndslices(self, ndslices:int)->None:
+    def set_ndslices(self, ndslices: int) -> None:
         """
         Sets the number of ndslices on the current subset.
 
@@ -382,29 +441,29 @@ class Scan(ExportableClassMixin):
     # ************************************************************************
     # Methods for managing cut list
     # ************************************************************************
-    def add_cut(self, *args, **kwargs)->None:
+    def add_cut(self, *args, **kwargs) -> None:
         """
         Add a cut to the currently selected subset.
 
-        Takes the same arguments as 
+        Takes the same arguments as
         `~cr39py.subset.Subset.add_cut`
         """
         self.current_subset.add_cut(*args, **kwargs)
 
-    def remove_cut(self, *args, **kwargs)->None:
+    def remove_cut(self, *args, **kwargs) -> None:
         """
         Remove a cut from the currently selected subset.
 
-        Takes the same arguments as 
+        Takes the same arguments as
         `~cr39py.subset.Subset.remove_cut`
         """
         self.current_subset.remove_cut(*args, **kwargs)
 
-    def replace_cut(self, *args, **kwargs)->None:
+    def replace_cut(self, *args, **kwargs) -> None:
         """
         Replace a cut on the currently selected subset.
 
-        Takes the same arguments as 
+        Takes the same arguments as
         `~cr39py.subset.Subset.replace_cut`
         """
         self.current_subset.replace_cut(*args, **kwargs)
@@ -414,27 +473,31 @@ class Scan(ExportableClassMixin):
     # *************************************************************************
 
     @property
-    def ntracks(self)->int:
+    def ntracks(self) -> int:
         """
         Number of tracks.
         """
-        return self.tracks.shape[0]
+        return self._tracks.shape[0]
 
     @cached_property
-    def _selected_tracks(self)->TrackData:
+    def _selected_tracks(self) -> TrackData:
+        """
+        Cached TrackData array containing the tracks selected
+        by the currently selected subset.
+        """
         # Save hash of the current subset, only reset tracks
         # property if the subset has changed, or if the framesize has
         # changed
         self._cached_subset_hash = hash(self.current_subset)
-        return self.current_subset.apply_cuts(self.tracks)
+        return self.current_subset.apply_cuts(self._tracks)
 
-    def reset_selected_tracks(self):
+    def _reset_selected_tracks(self):
         """Reset the cached selected tracks"""
         if hasattr(self, "_selected_tracks"):
             del self._selected_tracks
 
     @property
-    def selected_tracks(self)->TrackData:
+    def selected_tracks(self) -> TrackData:
         """
         Tracks array for currently selected tracks.
 
@@ -446,29 +509,26 @@ class Scan(ExportableClassMixin):
 
             # If the subset matches the copy cached the last time
             # _selected_tracks was updated, the property is still up to date
-            if (
-                hash(self.current_subset) == self._cached_subset_hash
-            ):
+            if hash(self.current_subset) == self._cached_subset_hash:
                 pass
             # If not, delete the properties so they will be created again
             else:
-                self.reset_selected_tracks()
+                self._reset_selected_tracks()
 
         return self._selected_tracks
 
     @property
-    def nselected_tracks(self)->int:
+    def nselected_tracks(self) -> int:
         """
         Number of currently selected tracks.
         """
         return self.selected_tracks.shape[0]
 
-    def rotate(self, angle: float, center:tuple[float]=(0,0))->None:
+    def rotate(self, angle: float, center: tuple[float] = (0, 0)) -> None:
         """
-        Rotates the tracks in the XY plane by `rot` around
-        a point
+        Rotates the tracks in the XY plane by `rot` around a point.
 
-        Paramters
+        Parameters
         ---------
 
         angle: float
@@ -476,39 +536,46 @@ class Scan(ExportableClassMixin):
 
         center : tuple[float]
             Center of rotation. The default is (0,0).
-
         """
 
-        x = self.tracks[:, 0] - center[0]
-        y = self.tracks[:, 1] - center[1]
+        x = self._tracks[:, 0] - center[0]
+        y = self._tracks[:, 1] - center[1]
         r = np.sqrt(x**2 + y**2)
         theta = np.arctan2(y, x)
         theta += np.deg2rad(angle)
-        self.tracks[:, 0] = r * np.cos(theta) + center[0]
-        self.tracks[:, 1] = r * np.sin(theta) + center[1]
+        self._tracks[:, 0] = r * np.cos(theta) + center[0]
+        self._tracks[:, 1] = r * np.sin(theta) + center[1]
 
-        self.reset_selected_tracks()
+        self._reset_selected_tracks()
 
-    def track_energy(self, particle, statistic="mean")->u.Quantity:
+    def track_energy(self, particle: str, statistic: str = "mean") -> u.Quantity:
         """
-        The energy of the tracks on the current subset + dslice
+        The energy of the currently selected tracks.
+
+        Parameters
+        ----------
+        particle : str
+            One of ['p', 'd', 't', 'a']
 
         statistic : str
-            One of ['mean', 'min', 'max']
+            One of ['mean', 'median']
+
+        Returns
+        -------
+        energy : float
+            Energy in MeV
         """
 
         d = self.selected_tracks[:, 2]
         if statistic == "mean":
             d = np.mean(d)
-        elif statistic == "min":
-            d = np.min(d)
-        elif statistic == "max":
-            d = np.max(d)
+        elif statistic == "median":
+            d = np.median(d)
         else:  # pragma: no cover
             raise ValueError(f"Statistic keyword not recognized: {statistic}")
 
         model = TwoParameterModel(particle)
-        energy = model.track_energy(d, self.etch_time.m_as(u.min))
+        energy = model.track_energy(d, self._etch_time.m_as(u.min))
 
         return energy
 
@@ -516,9 +583,12 @@ class Scan(ExportableClassMixin):
     # Data output
     # *************************************************************************
 
-    def histogram(self, axes:tuple[str]=("X", "Y"),
-                quantity: str|None=None, 
-                tracks:np.ndarray|None=None)->tuple[np.ndarray]:
+    def histogram(
+        self,
+        axes: tuple[str] = ("X", "Y"),
+        quantity: str | None = None,
+        tracks: np.ndarray | None = None,
+    ) -> tuple[np.ndarray]:
         """
         Create a histogram of the currently selected track data
 
@@ -530,7 +600,7 @@ class Scan(ExportableClassMixin):
         - 'E': ecentricity
         - 'Z' : z position/lens position during scan
 
-        Paramters
+        Parameters
         ---------
 
         axes : tuple(str), optional
@@ -538,7 +608,7 @@ class Scan(ExportableClassMixin):
 
         quantity: str, optional
             The quantity to plot. Default is to plot the number
-            of particles per cell. 
+            of particles per cell.
 
         tracks : np.ndarray (optional)
             Tracks data from which to make the histogram. Default
@@ -560,20 +630,22 @@ class Scan(ExportableClassMixin):
         if tracks is None:
             tracks = self.selected_tracks
 
-        ax0= self.axes[axes[0]]
-        ax1= self.axes[axes[1]]
+        ax0 = self._axes[axes[0]]
+        ax1 = self._axes[axes[1]]
         ax0_axis = ax0.axis(tracks, units=False)
         ax1_axis = ax1.axis(tracks, units=False)
 
         # If creating a histogram like the X,Y,D plots
         if quantity is not None:
-            ax2 = self.axes[quantity]
+            ax2 = self._axes[quantity]
             weights = tracks[:, ax2.ind]
         else:
             weights = None
 
-        rng = [(np.min(ax0_axis), np.max(ax0_axis)),
-                (np.min(ax1_axis), np.max(ax1_axis))]
+        rng = [
+            (np.min(ax0_axis), np.max(ax0_axis)),
+            (np.min(ax1_axis), np.max(ax1_axis)),
+        ]
         bins = [ax0_axis.size, ax1_axis.size]
 
         arr = histogram2d(
@@ -597,7 +669,8 @@ class Scan(ExportableClassMixin):
 
         return ax0_axis, ax1_axis, arr
 
-    def overlap_parameter_histogram(self)->tuple[np.ndarray]:
+    @property
+    def overlap_parameter_histogram(self) -> tuple[np.ndarray]:
         """The Zylstra overlap parameter for each cell.
 
         Only includes currently selected tracks.
@@ -619,7 +692,11 @@ class Scan(ExportableClassMixin):
         x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
 
         chi = (
-            ntracks / self.axes["X"].framesize / self.axes["Y"].framesize * np.pi * D**2
+            ntracks
+            / self._axes["X"].framesize
+            / self._axes["Y"].framesize
+            * np.pi
+            * D**2
         ).m_as(u.dimensionless)
 
         return x, y, chi
@@ -630,22 +707,21 @@ class Scan(ExportableClassMixin):
 
     def plot(
         self,
-        axes: tuple[str] | None =None,
-        quantity: str|None = None,
-        tracks:TrackData|None=None,
-        xrange: Sequence[float,None] | None  =None,
-        yrange:Sequence[float,None] | None  =None,
-        zrange: Sequence[float,None] | None  =None, 
-        log:bool=False,
+        axes: tuple[str] | None = None,
+        quantity: str | None = None,
+        tracks: TrackData | None = None,
+        xrange: Sequence[float, None] | None = None,
+        yrange: Sequence[float, None] | None = None,
+        zrange: Sequence[float, None] | None = None,
+        log: bool = False,
         figax=None,
         show=True,
-        
     ):
         """
         Plots a histogram of the track data.
 
         In addition to the track quantities [X,Y,D,C,E,Z], the following
-        custom quantities can also be plotted: 
+        custom quantities can also be plotted:
 
         - CHI : The track overlap parameter from Zylstra et al. 2012
 
@@ -659,12 +735,12 @@ class Scan(ExportableClassMixin):
         quantity: str | None
             Sets which quantity to plot. The default is None, which will
             result in plotting an unweighted histogram of the number
-            of tracks in each frame. Any of the track quantities are 
-            valid, as are the list of custom quantities above. 
+            of tracks in each frame. Any of the track quantities are
+            valid, as are the list of custom quantities above.
 
         tracks: `~numpy.ndarray` (ntracks,6) (optional)
-            Array of tracks to plot. Defaults to the 
-            currently selected tracks. 
+            Array of tracks to plot. Defaults to the
+            currently selected tracks.
 
         xrange: Sequence[float,None] (optional)
             Limits for the horizontal axis. Setting either value to
@@ -690,7 +766,7 @@ class Scan(ExportableClassMixin):
             created.
 
         show : bool, optional
-            If True, call plt.show() at the end to display the 
+            If True, call plt.show() at the end to display the
             plot. Default is True. Pass False if this plot is
             being made as a subplot of another figure.
 
@@ -701,7 +777,7 @@ class Scan(ExportableClassMixin):
             The matplotlib figure and axes objects with
             the plot.
 
-        
+
 
         """
         fontsize = 16
@@ -724,12 +800,12 @@ class Scan(ExportableClassMixin):
             zrange = [None, None]
 
         # Get the requested histogram
-        if quantity == 'CHI':
+        if quantity == "CHI":
             xax, yax, arr = self.overlap_parameter_histogram()
         else:
             xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
 
-        # Set all 0's in the histogram to NaN so they appear as 
+        # Set all 0's in the histogram to NaN so they appear as
         # blank white space on the plot
         arr[arr == 0] = np.nan
 
@@ -747,7 +823,7 @@ class Scan(ExportableClassMixin):
         yrange[1] = np.nanmax(yax) if yrange[1] is None else yrange[1]
         zrange[0] = np.nanmin(arr) if zrange[0] is None else zrange[0]
         zrange[1] = np.nanmax(arr) if zrange[1] is None else zrange[1]
-        
+
         # Apply log transform if requested
         if log:
             title += " (log)"
@@ -755,7 +831,6 @@ class Scan(ExportableClassMixin):
             arr[nonzero] = np.log10(arr[nonzero])
         else:
             title += " (lin)"
-
 
         if axes == ("X", "Y"):
             ax.set_aspect("equal")
@@ -783,23 +858,25 @@ class Scan(ExportableClassMixin):
 
         return fig, ax
 
-    def cutplot(self, tracks:TrackData|None=None, show:bool=True):
+    def cutplot(self, tracks: TrackData | None = None, show: bool = True):
         """
         Makes a standard figure useful for applying cuts.
 
         Subplots are:
-        - (X,Y,Number of particles) (simple histogram)
-        - 
+        - (X,Y,Num. Tracks (lin)) (simple histogram)
+        - (D,C, Num. Tracks (log))
+        - (X, Y, D (lin)) (average diameter per frame)
+        - (D, E, Num. Tracks (log))
 
         Parameters
         ----------
 
         tracks : `~numpy.ndarray` (ntracks, 6), optional
             Array of tracks to plot. Defaults to the
-            currently selected tracks. 
+            currently selected tracks.
 
         show : bool, optional
-            If True, call plt.show() at the end to display the 
+            If True, call plt.show() at the end to display the
             plot. Default is True. Pass False if this plot is
             being made as a subplot of another figure.
 
@@ -812,10 +889,10 @@ class Scan(ExportableClassMixin):
         fig.subplots_adjust(hspace=0.3, wspace=0.3)
 
         title = (
-            f"Subset {self.current_subset_index}, "
+            f"Subset {self._current_subset_index}, "
             f"dslice {self.current_subset.current_dslice_index} of "
             f"{self.current_subset.ndslices} selected, "
-            f'\nEtch time: {self.etch_time.m_as(u.min):.1f} min.'
+            f"\nEtch time: {self._etch_time.m_as(u.min):.1f} min."
         )
 
         fig.suptitle(title)
@@ -847,7 +924,7 @@ class Scan(ExportableClassMixin):
         ax = axarr[1][0]
         self.plot(
             axes=("X", "Y"),
-            quantity='D',
+            quantity="D",
             show=False,
             figax=(fig, ax),
             xrange=self.current_subset.domain.xrange,
@@ -873,10 +950,19 @@ class Scan(ExportableClassMixin):
 
         return fig, ax
 
-    def focus_plot(self, show:bool=True):
+    def focus_plot(self, show: bool = True):
         """
-        Plot the focus (z coordinate) over the scan. Used to look for
-        abnormalities that may indicate a failed scan.
+        Plot of the microscope focus (Z) across the XY plane of the scan.
+
+        Used to look for abnormalities that may indicate a failed scan.
+
+        Parameters
+        ----------
+
+        show : bool, optional
+            If True, call plt.show() at the end to display the
+            plot. Default is True. Pass False if this plot is
+            being made as a subplot of another figure.
         """
 
         fig, ax = plt.subplots()
@@ -890,218 +976,17 @@ class Scan(ExportableClassMixin):
 
         if show:
             plt.show()
-        return fig,ax
+        return fig, ax
 
     # *******************************************************
     # Command line interface
     # *******************************************************
 
-    def cli(self):  # pragma: no cover
+    def cli(self) -> None:  # pragma: no cover
         """
         Command line interface for interactively setting up cuts.
         """
+        # Import here to avoid circular import
+        from cr39py.scan._cli import scan_cli
 
-        # This flag keeps track of whether any changes have been made
-        # by the CLI, and will be returned when it exits
-        changed = False
-
-        while True:
-            # Clear IPython output to avoid piling up plots
-            display.clear_output(wait=False)
-
-            # Create a cut plot
-            self.cutplot(show=True)
-            
-            print("*********************************************************")
-            print(
-                f"Current subset index: {self.current_subset_index} of {np.arange(len(self.subsets))}"
-            )
-            # Print a summary of the current subset
-            print(self.current_subset)
-            print(
-                f"ntracks selected: {self.nselected_tracks:.1e} "
-                f"(of {self.ntracks:.1e})"
-            )
-
-            print(
-                "add (a), edit (e), edit the domain (d), remove (r), plot (p), "
-                "plot inverse (pi), switch subsets (subset), change dslices (dslice), "
-                "change the number of dslices (ndslices), end (end), help (help)"
-            )
-
-            split = _cli_input(mode="alpha-integer list", always_pass=[])
-            x = split[0]
-
-            if x == "help":
-                print(
-                    "Enter commands, followed by any additional arugments "
-                    "separated by commas.\n"
-                    " ** Commands ** \n"
-                    "'a' -> create a new cut\n"
-                    "'c' -> Select a new dslice\n"
-                    "Argument (one int) is the index of the dslice to select"
-                    "Enter 'all' to select all"
-                    "'d' -> edit the domain\n"
-                    "'e' -> edit a cut\n"
-                    "Argument (one int) is the cut to edit\n"
-                    "'ndslices' -> Change the number of dslices on this subset."
-                    "'p' -> plot the image with current cuts\n"
-                    "'pi' -> plot the image with INVERSE of the cuts\n"
-                    "'r' -> remove an existing cut\n"
-                    "Arguments are numbers of cuts to remove\n"
-                    "'subset' -> switch subsets or create a new subset\n"
-                    "Argument is the index of the subset to switch to, or"
-                    "'new' to create a new subset"
-                    "'help' -> print this documentation\n"
-                    "'end' -> accept the current values\n"
-                    "'framesize` -> Change the framesize on an axis\n"
-                    " ** Cut keywords ** \n"
-                    "xmin, xmax, ymin, ymax, dmin, dmax, cmin, cmax, emin, emax\n"
-                    "e.g. 'xmin:0,xmax:5,dmax=15'\n"
-                )
-
-            elif x == "end":
-                self.cutplot(show=True)
-                break
-
-            elif x == "a":
-                print("Enter new cut parameters as key:value pairs separated by commas")
-                kwargs = _cli_input(mode="key:value list")
-
-                # validate the keys are all valid dictionary keys
-                valid = True
-                for key in kwargs.keys():
-                    if key not in list(Cut.defaults.keys()):
-                        print(f"Unrecognized key: {key}")
-                        valid = False
-
-                if valid:
-                    c = Cut(**kwargs)
-                    self.current_subset.add_cut(c)
-
-                self.cutplot(show=True)
-                changed = True
-
-            elif x == "framesize":
-                print("Enter the name of the axis to change")
-                ax_name = _cli_input(mode="alpha-integer")
-                ax_name = ax_name.upper()
-                print(f"Selected axis {ax_name}")
-                print(f"Current framesize is {self.axes[ax_name].framesize:.1e}")
-                print("Enter new framesize")
-                framesize = _cli_input(mode="float")
-                self.set_framesize(ax_name, framesize)
-                self.cutplot(show=True)
-                changed = True
-
-            elif x == "dslice":
-                if len(split) < 2:
-                    print(
-                        "Select the index of the dslice to switch to, or"
-                        "enter 'all' to select all dslices"
-                    )
-                    ind = _cli_input(mode="alpha-integer")
-                else:
-                    ind = split[1]
-
-                if ind == "all":
-                    self.select_dslice(None)
-                else:
-                    self.select_dslice(int(ind))
-                self.cutplot(show=True)
-                changed = True
-
-            elif x == "d":
-                print("Current domain: " + str(self.current_subset.domain))
-                print(
-                    "Enter a list key:value pairs with which to modify the domain"
-                    "(set a key to 'None' to remove it)"
-                )
-                kwargs = _cli_input(mode="key:value list")
-                self.current_subset.domain.update(**kwargs)
-                self.cutplot(show=True)
-                changed = True
-
-            elif x == "e":
-                if len(split) > 1:
-                    ind = int(split[1])
-
-                    if ind >= len(self.current_subset.cuts):
-                        print("Invalid subset number")
-
-                    else:
-                        print(
-                            f"Selected cut ({ind}) : "
-                            + str(self.current_subset.cuts[ind])
-                        )
-                        print(
-                            "Enter a list key:value pairs with which to modify this cut"
-                            "(set a key to 'None' to remove it)"
-                        )
-
-                        kwargs = _cli_input(mode="key:value list")
-                        self.current_subset.cuts[ind].update(**kwargs)
-                        self.cutplot(show=True)
-                        changed = True
-                else:
-                    print(
-                        "Specify the number of the cut you want to modify "
-                        "as an argument after the command."
-                    )
-
-            elif x == "ndslices":
-                if len(split) < 2:
-                    print("Enter the requested number of dslices")
-                    ind = _cli_input(mode="alpha-integer")
-                else:
-                    ind = split[1]
-                self.set_ndslices(int(ind))
-                self.cutplot(show=True)
-
-                changed = True
-
-            elif x in ["p", "pi"]:
-                if x == "pi":
-                    deselected_tracks = self.current_subset.apply_cuts(self.tracks, invert=True)
-                    self.cutplot(show=True, tracks=deselected_tracks)
-                else:
-                    self.cutplot(show=True)
-
-            elif x == "r":
-                if len(split) < 2:
-                    print("Select the index of the cut to remove")
-                    ind = _cli_input(mode="integer")
-                else:
-                    ind = split[1]
-                print(f"Removing cut {int(ind)}")
-                self.current_subset.remove_cut(int(ind))
-                self.cutplot(show=True)
-
-                changed = True
-
-            elif x == "subset":
-                if len(split) < 2:
-                    print(
-                        "Select the index of the subset to switch to, or "
-                        "enter 'new' to create a new subset."
-                    )
-                    ind = _cli_input(mode="alpha-integer")
-                else:
-                    ind = split[1]
-
-                if ind == "new":
-                    ind = len(self.subsets)
-                    print(f"Creating a new subset, index {ind}")
-                    subset = Subset()
-                    self.add_subset(subset)
-
-                print(f"Selecting subset {ind}")
-                self.select_subset(int(ind))
-                self.cutplot(show=True)
-                changed = True
-
-            else:
-                print(f"Invalid input: {x}")
-
-
-        return changed
+        return scan_cli(self)
