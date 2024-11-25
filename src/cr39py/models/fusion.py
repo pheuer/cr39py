@@ -9,6 +9,14 @@ import numpy as np
 from cr39py.core.data import get_resource_path
 from cr39py.core.units import u
 
+_reaction_data = {
+    "D(D,n)": "D(D,n)He-3.h5",
+    "D(D,p)": "D(D,p)T.h5",
+    "3He(D,p)": "He-3(D,p)A.h5",
+}
+
+reactions: list[str] = list(_reaction_data.keys())
+
 
 def reduced_mass(reaction: str) -> float:
     """
@@ -39,10 +47,8 @@ def cross_section(
     ----------
 
     reaction : str
-        The nuclear reaction. Supported strings are:
-        - 'D(D,n)'
-        - 'D(D,p)'
-        - '3He(D,p)'
+        The nuclear reaction. Supported strings are listed in
+        `~cr39py.models.fusion.reactions`.
 
     energies : u.Quantity, optional
         Energy axis (in the center of mass frame) over which to
@@ -63,18 +69,12 @@ def cross_section(
     if energies is None:
         energies = np.arange(10, 1e5, 50) * u.eV
 
-    files = {
-        "D(D,n)": "D(D,n)He-3.h5",
-        "D(D,p)": "D(D,p)T.h5",
-        "3He(D,p)": "He-3(D,p)A.h5",
-    }
-
-    if reaction not in files:
+    if reaction not in reactions:
         raise ValueError(
-            f"Reaction {reaction} not recognized. Valid inputs are " f"{list(files)}"
+            f"Reaction {reaction} not recognized. Valid inputs are " f"{reactions}"
         )
 
-    path = get_resource_path(files[reaction])
+    path = get_resource_path(_reaction_data[reaction])
     with h5py.File(path, "r") as f:
         _energies = f["energy"][:]  # eV
         xs = f["SIG"][:]  # m^2
@@ -92,8 +92,8 @@ def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
     ----------
 
     reaction : str
-        The nuclear reaction. See valid reactions on
-        `~cr39py.models.fusion.cross_section`.
+        The nuclear reaction. Supported strings are listed in
+        `~cr39py.models.fusion.reactions`.
 
     tion : u.Quantity
         Ion temperatures  over which to calculate the
@@ -140,26 +140,38 @@ def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
         return r
 
 
-def yield_ratio(reaction1: str, reaction2: str, tion: u.Quantity) -> float:
+def d3hep_yield(
+    DDn_yield: float,
+    D_pressure: u.Quantity | float,
+    He_pressure: u.Quantity | float,
+    tion: u.Quantity,
+):
     """
-    Calculate the yield ratio between two nuclear reactions at a given ion temperature.
+    The ratio of D3He protons to DD neutrons produced for specified fill pressures and ion temperature.
 
-    Parameters
-    ----------
+    D3He exploding pushers are a common backlighter for proton radiography experiments. They produce the three
+    reactions
+
+    - D(D,n)
+    - D(D,p) (~3 MeV)
+    - 3He(D,p) (~15 MeV)
+
+    The neutron yield from the first reaction, and the deuterium ion temperature, are measured by the neutron
+    time-of-flight detectors. The branching ratio between the D(D,n) and D(D,p) reactions is 50/50, so the
+    neutron yield also gives the D(D,p) proton yield. This function calculates the expected 3He(D,p) yield for
+    an expected D(D,n) yield and ion temperature (which influences the relative reactivities). This may be used
+    when designing an experiment, or when estimating fluence of 3He(D,p) protons on the CR39 prior to etching.
     """
-
-    r1 = reactivity(reaction1, tion=tion)
-    r2 = reactivity(reaction2, tion=tion)
-
-    return (r1 / r2).m_as(u.dimensionless)
+    pass
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
+    """
     e, xs = cross_section("3He(D,p)", energies=np.arange(1, 1e3, 5) * u.keV)
 
-    """
+
     fig, ax = plt.subplots()
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -180,6 +192,13 @@ if __name__ == "__main__":
     plt.show()
 
 
-    """
+
     r = reactivity("3He(D,p)", tion=5 * u.keV)
     print(r)
+    """
+
+    print(
+        reactivity_ratio(
+            "3He(D,p)", "D(D,n)", np.array([1, 3, 5, 10, 15, 20, 1000]) * u.keV
+        )
+    )
