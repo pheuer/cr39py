@@ -231,6 +231,33 @@ class Scan(ExportableClassMixin):
 
         return cls.from_tracks(tracks, etch_time)
 
+    @classmethod
+    def from_example_cpsa(cls, filename: str, etch_time: float):
+        """
+        Initialize a Scan object from an example dataset
+        packaged with cr39py.
+
+        This function is mostly useful in documentation notebooks
+        where getting paths to example files is complicated.
+
+        Parameters
+        ---------
+        filename : str
+            Name of the example file to load.
+
+        etch_time : float
+            Etch time in minutes.
+
+        """
+        from cr39py.core.data import data_dir
+
+        path = data_dir / Path(filename)
+        if not path.is_file():  # pragma : no cover
+            raise ValueError(f"Example dataset {path} not found.")
+
+        obj = Scan.from_cpsa(path, etch_time)
+        return obj
+
     # **********************************
     # Framesize setup
     # **********************************
