@@ -51,3 +51,9 @@ skip = '*.ipynb'
 ignore-words-list = """
 hax,
 vax"""
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+  "*/cr39py/tests/*",
+]
