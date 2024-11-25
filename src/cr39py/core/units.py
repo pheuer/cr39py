@@ -10,6 +10,8 @@ import warnings
 import numpy as np
 import pint
 
+__all__ = ["u"]
+
 unit_registry = pint.UnitRegistry()
 
 # PSL as a dimensionless unit
@@ -17,8 +19,6 @@ unit_registry.define("PSL=")
 
 
 unit_registry.define("thou=25400*nm=mil")
-
-__all__ = []
 
 
 with warnings.catch_warnings():
