@@ -1,5 +1,8 @@
 """
-Temporary stand-in for lotus unit registry
+pint units registry. To create quantities with units:
+
+>> from cr39py.core.units import u
+>> x = 1 * u.m
 """
 
 import warnings
