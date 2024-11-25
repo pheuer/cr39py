@@ -1,11 +1,16 @@
 """
-Temporary stand-in for lotus unit registry
+pint units registry. To create quantities with units:
+
+>> from cr39py.core.units import u
+>> x = 1 * u.m
 """
 
 import warnings
 
 import numpy as np
 import pint
+
+__all__ = ["u"]
 
 unit_registry = pint.UnitRegistry()
 
@@ -14,8 +19,6 @@ unit_registry.define("PSL=")
 
 
 unit_registry.define("thou=25400*nm=mil")
-
-__all__ = []
 
 
 with warnings.catch_warnings():
