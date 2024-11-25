@@ -72,3 +72,8 @@ def test_reactivity_single_values(reaction, tion, expected):
     r = reactivity(reaction, tion)
     assert isinstance(r, u.Quantity)
     assert np.abs(r - expected) / expected - 1 < 0.1
+
+
+def test_d3hep_yield():
+    y = d3hep_yield(1e8, 6.5, 13, 11 * u.keV) * 1e-7
+    assert np.isclose(y, 4.48, rtol=0.05)
