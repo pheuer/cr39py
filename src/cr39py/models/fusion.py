@@ -69,6 +69,9 @@ def cross_section(
     if energies is None:
         energies = np.arange(10, 1e5, 50) * u.eV
 
+    if energies.ndim == 0:
+        energies = np.array([energies.m]) * energies.u
+
     if reaction not in reactions:
         raise ValueError(
             f"Reaction {reaction} not recognized. Valid inputs are " f"{reactions}"
@@ -81,7 +84,10 @@ def cross_section(
 
     xs = np.interp(energies.m_as(u.eV), _energies, xs) * u.m**2
 
-    return energies, xs
+    if energies.size == 1:
+        return xs[0]
+    else:
+        return energies, xs
 
 
 def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
