@@ -142,7 +142,7 @@ def reactivity(reaction: str, tion: u.Quantity) -> tuple[u.Quantity]:
 
 def d3hep_yield(
     DDn_yield: float,
-    D_pressure: u.Quantity | float,
+    D2_pressure: u.Quantity | float,
     He_pressure: u.Quantity | float,
     tion: u.Quantity,
 ):
@@ -161,8 +161,42 @@ def d3hep_yield(
     neutron yield also gives the D(D,p) proton yield. This function calculates the expected 3He(D,p) yield for
     an expected D(D,n) yield and ion temperature (which influences the relative reactivities). This may be used
     when designing an experiment, or when estimating fluence of 3He(D,p) protons on the CR39 prior to etching.
+
+    Parameters
+    ----------
+
+    DDn_yield : float
+        The D(D,n) neutron yield
+
+    D2_pressure: u.Quantity or float
+        The D2 fill pressure. Can be a float as long as the units
+        match the He pressure, since only the ratio enters into
+        the calculation.
+
+    He_pressure: u.Quantity or float
+        The 3He fill pressure. Can be a float as long as the units
+        match the D2 pressure, since only the ratio enters into
+        the calculation.
+
+    tion : u.Quantity, eV
+        The deuterium ion temperature.
+
+
+    Returns
+    -------
+
+    estimated_yield : float
+        The estimated 3He(D,p) proton yield.
+
     """
-    pass
+
+    dd_reactivity = reactivity("D(D,n)", tion)
+    d3he_reactivity = reactivity("3He(D,p)", tion)
+
+    # Factor of 2 represents that D2 has two atoms per molecule, while 3He is monoatomic
+    return (
+        DDn_yield * d3he_reactivity / dd_reactivity * He_pressure / (2 * D2_pressure)
+    ).m_as(u.dimensionless)
 
 
 if __name__ == "__main__":
@@ -196,9 +230,7 @@ if __name__ == "__main__":
     r = reactivity("3He(D,p)", tion=5 * u.keV)
     print(r)
     """
-
-    print(
-        reactivity_ratio(
-            "3He(D,p)", "D(D,n)", np.array([1, 3, 5, 10, 15, 20, 1000]) * u.keV
-        )
-    )
+    yn = 1e9
+    y = d3hep_yield(yn, 6.5, 13, 3.8 * u.keV)
+    yratio = y / yn
+    print(f"D3He Yield: {y:.2e}, Yield ratio: {yratio:.2f}")
