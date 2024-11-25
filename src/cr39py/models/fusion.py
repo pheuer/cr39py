@@ -24,7 +24,23 @@ def reduced_mass(reaction: str) -> float:
 
     Reaction string should be in the format r1(r2,p1)p2
 
-    Valid reactants are [p,D,T,3He,4He]
+
+
+    Parameters
+    ----------
+
+    reaction : str
+        The nuclear reaction. Valid reactants are [p,D,T,3He,4He].
+        Reaction string should be in the format r1(r2,p1)p2. Products,
+        if present, are ignored.
+
+    Returns
+    -------
+
+    reduced_mass : u.Quantity (kg)
+        The reduced mass of the reactants.
+
+
     """
     masses = {"p": 1, "D": 2, "T": 3, "3He": 3, "4He": 4}
 
