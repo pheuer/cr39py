@@ -153,6 +153,8 @@ class Scan(ExportableClassMixin):
         # Etch time, u.Quantity
         self._etch_time = None
 
+        self.metadata = {}
+
     @property
     def tracks(self) -> TrackData:
         """
@@ -185,7 +187,7 @@ class Scan(ExportableClassMixin):
     # **********************************
 
     @classmethod
-    def from_tracks(cls, tracks: TrackData, etch_time: float):
+    def from_tracks(cls, tracks: TrackData, etch_time: float, metadata=None):
         """
         Initialize a Scan object from an array of tracks.
 
@@ -197,10 +199,14 @@ class Scan(ExportableClassMixin):
         etch_time : float
             Etch time in minutes.
         """
+        if metadata is None:
+            metadata = {}
+
         obj = cls()
 
         obj._etch_time = etch_time * u.min
         obj._tracks = tracks
+        obj.metadata = metadata
 
         # Initialize the axes based on the provided tracks
         for ax in obj._axes.values():
@@ -227,9 +233,8 @@ class Scan(ExportableClassMixin):
             Etch time in minutes.
 
         """
-        tracks = read_cpsa(path)
-
-        return cls.from_tracks(tracks, etch_time)
+        tracks, metadata = read_cpsa(path)
+        return cls.from_tracks(tracks, etch_time, metadata=metadata)
 
     # **********************************
     # Framesize setup
