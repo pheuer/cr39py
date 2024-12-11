@@ -3,6 +3,7 @@ This module contains code for handling the MIT CPSA format for CR39
 track data.
 """
 
+import re
 from collections import namedtuple
 from pathlib import Path
 
@@ -70,6 +71,19 @@ def read_cpsa(path: Path) -> TrackData:
         fx = pix_size * NFPx
         fy = pix_size * NFPy
         print(f"...Microscope frame size fx, fy: {fx:.1e} um, {fy:.1e} um")
+
+        metadata = {
+            "version": version,
+            "nx_frames": nx,
+            "ny_frames": ny,
+            "nframes": nframes,
+            "pixel_size": pix_size,
+            "threshold": threshold,
+            "NFPx": NFPx,
+            "NFPy": NFPy,
+            "frame_size_x": fx,
+            "frame_size_y": fy,
+        }
 
         # Read the full datafile as int32 and separate out the track info
 
@@ -183,6 +197,14 @@ def read_cpsa(path: Path) -> TrackData:
 
             frame_tracks.append(t)
 
+        # Read the footer, save the whole string into the metadata
+        # This contains a bunch of additional metadata
+        footer = b""
+        for line in file:
+            footer += line
+        footer = footer.decode("cp1250")
+        metadata["cpsa_footer"] = footer
+
     # The order of the quantities in track data is:
     # 0) x position (cm))
     # 1) y position (cm)
@@ -204,4 +226,24 @@ def read_cpsa(path: Path) -> TrackData:
     # Sort the yaxis (it's backwards...)
     yax = np.sort(yax)
 
-    return tracks
+    # Extract some quantities from the footer using regex
+
+    # In scans that are part of a coincidence counting process, six marks will be made on the piece
+    # This regex pulls out the lines in the footer that record where these images were taken, which
+    # look like this
+    # IMAGES recorded before and after this scan were at:
+    #   0>    (4.22560, 2.76639)   [Notes: UL-m]
+    #   1>    (0.52671, 2.75683)   [Notes: UR-m]
+    #   2>    (4.27408, 2.76639)   [Notes: UL-FE]
+    #   3>    (0.48003, 2.75683)   [Notes: UR-NE]
+    #   4>    (4.53513, 2.76701)   [Notes: UL-NE]
+    #   5>    (0.74559, 2.75503)   [Notes: UR-FE]
+    note_fields = ["UL-m", "UR-m", "UL-FE", "UL-NE", "UR-FE", "UR-NE"]
+    for note in note_fields:
+        pattern = f"\([+-]?([0-9]*[.][0-9]+),\s[+-]?([0-9]*[.][0-9]+)\)[\s]+\[Notes:[\s]+{note}\]\n"
+        match = re.search(pattern, footer)
+        if match is not None:
+            point = np.array([float(x) for x in match.groups()])
+            metadata[note] = point
+
+    return tracks, metadata
