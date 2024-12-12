@@ -238,6 +238,7 @@ def read_cpsa(path: Path) -> TrackData:
     #   3>    (0.48003, 2.75683)   [Notes: UR-NE]
     #   4>    (4.53513, 2.76701)   [Notes: UL-NE]
     #   5>    (0.74559, 2.75503)   [Notes: UR-FE]
+    # These positions are in cm
     note_fields = ["UL-m", "UR-m", "UL-FE", "UL-NE", "UR-FE", "UR-NE"]
     for note in note_fields:
         pattern = f"\([+-]?([0-9]*[.][0-9]+),\s[+-]?([0-9]*[.][0-9]+)\)[\s]+\[Notes:[\s]+{note}\]\n"
