@@ -239,10 +239,10 @@ def read_cpsa(path: Path) -> TrackData:
     #   4>    (4.53513, 2.76701)   [Notes: UL-NE]
     #   5>    (0.74559, 2.75503)   [Notes: UR-FE]
     # These positions are in cm
-    note_fields = ["UL-m", "UR-m", "UL-FE", "UL-NE", "UR-FE", "UR-NE"]
+    note_fields = ["UL-M", "UR-M", "UL-FE", "UL-NE", "UR-FE", "UR-NE"]
     for note in note_fields:
         pattern = f"\([+-]?([0-9]*[.][0-9]+),\s[+-]?([0-9]*[.][0-9]+)\)[\s]+\[Notes:[\s]+{note}\]\n"
-        match = re.search(pattern, footer)
+        match = re.search(pattern.lower(), footer.lower())
         if match is not None:
             point = np.array([float(x) for x in match.groups()])
             metadata[note] = point

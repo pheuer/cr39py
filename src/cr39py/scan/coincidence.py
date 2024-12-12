@@ -26,7 +26,7 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
 
     """
     # Load the metadata
-    points = ["UL-m", "UR-m", "UL-FE", "UL-NE", "UR-FE", "UR-NE"]
+    points = ["UL-M", "UR-M", "UL-FE", "UL-NE", "UR-FE", "UR-NE"]
     x1, x2, y1, y2 = [], [], [], []
     dx, dy = [], []
 
@@ -75,6 +75,7 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
 
         ax.legend(loc="lower right")
 
+    """
     # Remove any points falling more than a standard deviation from the median shift
     keep = np.array(
         [np.abs(s - np.median(shift)) < np.std(shift) for s in shift]
@@ -87,11 +88,17 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
         )
     dx = dx[keep]
     dy = dy[keep]
+    """
 
     return np.mean(dx), np.mean(dy)
 
 
-def coincident_tracks(pre_scan: Scan, post_scan: Scan, plots=True):
+def coincident_tracks(
+    pre_scan: Scan,
+    post_scan: Scan,
+    tolerance=5,
+    plots=True,
+):
     """Finds coincident tracks between two scans.
 
     Used to de-noise data by finding coincident tracks
@@ -118,6 +125,12 @@ def coincident_tracks(pre_scan: Scan, post_scan: Scan, plots=True):
     post_scan : `~cr39py.scan.base_scan.Scan`
         The scan after bulk etching.
 
+    tolerance : float
+        Tolerance required to count a track as being coincident. In um.
+
+    plots: bool, optional
+        Make summary plots. Defaults to True.
+
     Returns
     -------
 
@@ -137,6 +150,15 @@ def coincident_tracks(pre_scan: Scan, post_scan: Scan, plots=True):
         and outlier.
 
 
+    Notes
+    -----
+
+    Papers on coincidence counting CR-39 tracks
+
+    D. T. Casey et al. RSI 2011 https://doi.org/10.1063/1.3605483
+    B. Lahmann et al. RSI 2016 https://doi.org/10.1063/1.4958910
+
+
     """
 
     # Get the alignment shift
@@ -148,3 +170,45 @@ def coincident_tracks(pre_scan: Scan, post_scan: Scan, plots=True):
     # Shift the tracks in the post scan based on the alignment points
     post_tracks[:, 0] = post_tracks[:, 0] - dx
     post_tracks[:, 1] = post_tracks[:, 1] - dy
+
+    # Make sure both scans framesizes are set to the actual microscope
+    # framesize of the first scan
+    pre_scan.set_framesize("XY", pre_scan.metadata["frame_size_x"] * 1e-4)
+    post_scan.set_framesize("XY", pre_scan.metadata["frame_size_x"] * 1e-4)
+
+    X, Y = pre_scan._axes["X"].axis(pre_tracks, units=False), pre_scan._axes["Y"].axis(
+        pre_tracks, units=False
+    )
+    for i in range(X.size):
+        for j in range(Y.size):
+            # Select tracks in or near this frame
+            _pre_mask = (
+                (pre_tracks[:, 0] > X[i])
+                * (pre_tracks[:, 0] < X[i + 1])
+                * (pre_tracks[:, 1] > Y[j])
+                * (pre_tracks[:, 1] < Y[j + 1])
+            )
+            _pre_tracks = pre_tracks[_pre_mask, :2]
+
+            # Select tracks in or near this frame
+            _post_mask = (
+                (post_tracks[:, 0] > X[i])
+                * (post_tracks[:, 0] < X[i + 1])
+                * (post_tracks[:, 1] > Y[j])
+                * (post_tracks[:, 1] < Y[j + 1])
+            )
+            _post_tracks = post_tracks[_post_mask, :2]
+
+            if j == 6:
+                fig, ax = plt.subplots()
+                ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1])
+                ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1])
+                plt.show()
+
+                raise ValueError
+
+    # Loop through the frames
+
+    # For each point in the frame, compare position to all tracks in that frame + the adjacent 8 frames
+    # on the previous scan. Tag tracks as accept or reject in a boolean mask array (of the pre scan tracks)
+    # based on their max distance from another track compared to the tolerance

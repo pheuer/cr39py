@@ -106,7 +106,8 @@ class _Axis(ExportableClassMixin):
         if maxval is None:
             maxval = np.max(tracks[:, self.ind])
 
-        ax = np.arange(minval, maxval, self.framesize.m_as(self.unit))
+        dax = self.framesize.m_as(self.unit)
+        ax = np.arange(minval, maxval + dax, dax)
 
         if units:
             ax *= self.unit
@@ -125,6 +126,14 @@ class Scan(ExportableClassMixin):
     at a time, and the cuts from that subset are applied to create
     the selected_tracks object. Selected_tracks can be written out
     as a histogram for further data analysis.
+
+    Notes
+    -----
+
+    Some fundamental papers on CR-39
+
+    F. H. Séguin et al. 2003 RSI https://doi.org/10.1063/1.1518141
+
     """
 
     _axes = {
@@ -260,7 +269,11 @@ class Scan(ExportableClassMixin):
         # If no unit is supplied, assume the
         # default units for this axis
         if not isinstance(framesize, u.Quantity):
-            framesize *= self._axes[ax_key].unit
+            if ax_key == "XY":
+                unit = self._axes["X"].unit
+            else:
+                self._axes[ax_key].unit
+            framesize *= unit
 
         if ax_key in ["X", "Y"]:
             self.set_framesize("XY", framesize)
