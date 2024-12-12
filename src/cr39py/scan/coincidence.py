@@ -76,27 +76,34 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
         ax.legend(loc="lower right")
 
     # Try fine-tuning the correction by looking at tracks within some distance of the alignment point
-    rc = 600 * 1e-4  # cm
-    point = 1
-    # Select tracks within some radius of a given fiducial
-    _pre_r = np.hypot(
-        pre_scan._tracks[:, 0] - x1[point], pre_scan._tracks[:, 1] - y1[point]
-    )
-    _pre_tracks = pre_scan._tracks[_pre_r < rc, :2]
-    _post_r = np.hypot(
-        post_scan._tracks[:, 0] - x2[point], post_scan._tracks[:, 1] - y2[point]
-    )
-    _post_tracks = post_scan._tracks[_post_r < rc, :2]
+
+    point = 2
+
+    center = (x1[point], y1[point])
+
+    dx = 400 * 1e-4  # cm
+    _pre_tracks = np.copy(pre_scan._tracks)
+    _pre_tracks[:, 0] -= x1[point]
+    _pre_tracks[:, 1] -= y1[point]
+    pre_mask = (np.abs(_pre_tracks[:, 0]) < dx) * (np.abs(_pre_tracks[:, 1]) < dx)
+    _pre_tracks = _pre_tracks[pre_mask, :2]
+
+    dx = 200 * 1e-4
+    _post_tracks = np.copy(post_scan._tracks)
+    _post_tracks[:, 0] -= x2[point]
+    _post_tracks[:, 1] -= y2[point]
+    post_mask = (np.abs(_post_tracks[:, 0]) < dx) * (np.abs(_post_tracks[:, 1]) < dx)
+    _post_tracks = _post_tracks[post_mask, :2]
 
     fig, ax = plt.subplots()
     ax.set_title(points[point])
-    ax.scatter(x1[point], y1[point], marker="*", s=50)
-    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1])
-    ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1])
+    ax.scatter(0, 0, marker="*", s=50)
+    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
+    ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1], s=5)
 
-    x = np.arange(x1[point] - rc, x1[point] + rc, 5e-4)
-    y = np.arange(y1[point] - rc, y1[point] + rc, 5e-4)
-
+    dx = 400 * 1e-4
+    x = np.arange(-dx, dx, 5e-4)
+    y = x
     X, Y = np.meshgrid(x, y, indexing="ij")
     pre_map = np.zeros(X.shape)
     post_map = np.zeros(X.shape)
@@ -109,6 +116,7 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
     fig, ax = plt.subplots()
     ax.pcolormesh(x, y, pre_map.T)
 
+    sigma = 5 * 1e-4  # um -> cm
     for k in range(_post_tracks.shape[0]):
         r = np.hypot(X - _post_tracks[k, 0], Y - _post_tracks[k, 1])
         post_map += np.exp(-(r**2) / 2 / sigma**2)
@@ -124,16 +132,16 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
     ax.pcolormesh(cor)
 
     maxi = np.argmax(cor)
-    xshift = X.flatten()[maxi] - x1[point]
-    yshift = Y.flatten()[maxi] - y1[point]
+    xshift = X.flatten()[maxi]
+    yshift = Y.flatten()[maxi]
 
     print(xshift * 1e4, yshift * 1e4)
 
     fig, ax = plt.subplots()
     ax.set_title(points[point])
-    ax.scatter(x1[point], y1[point], marker="*", s=50)
+    ax.scatter(0, 0, marker="*", s=50)
     ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
-    ax.scatter(_post_tracks[:, 0] + xshift, _post_tracks[:, 1] + yshift, s=10)
+    ax.scatter(_post_tracks[:, 0] - xshift, _post_tracks[:, 1] - yshift, s=10)
 
     """
     # Remove any points falling more than a standard deviation from the median shift
