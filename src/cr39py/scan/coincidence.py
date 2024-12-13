@@ -77,7 +77,7 @@ def _get_rough_alignment_from_fiducials(
     # Weight the vectors by their lengths: farther separated points should
     # be given more weight
     rot, rssd = Rotation.align_vectors(pre_vecs, post_vecs, weights=weights)
-    rot = np.arccos(rot.as_matrix()[0, 0])
+    rot = -np.arccos(rot.as_matrix()[0, 0])
 
     # Create a 2D rotation matrix and rotate the points accordingly
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
@@ -85,11 +85,13 @@ def _get_rough_alignment_from_fiducials(
         x[point][2:] = np.matmul(rmatrix, x[point][2:])
 
     # Now calculate dx, dy for each set of points and select the translation
+    # dx, dy are the vector FROM the post scan TO the pre scan, so that ADDING
+    # them to the post-scan should reset the positions
     dx, dy = [], []
     for p in points:
         x1, y1, x2, y2 = x[p]
-        dx.append(x2 - x1)
-        dy.append(y2 - y1)
+        dx.append(x1 - x2)
+        dy.append(y1 - y2)
 
     dx = np.array(dx)
     dy = np.array(dy)
@@ -191,28 +193,68 @@ def coincident_tracks(
 
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
 
-    _pre_tracks = pre_scan._tracks
+    _pre_tracks = np.copy(pre_scan._tracks[:, :2])
+    _post_tracks = np.copy(post_scan._tracks[:, :2])
 
-    _post_tracks = post_scan._tracks
-    print(rmatrix.shape)
-    print(_post_tracks[:, :2].shape)
-    _post_tracks[:, :2] = np.matmul(_post_tracks[:, :2], rmatrix)
-    _post_tracks[:, 0] = _post_tracks[:, 0] - dx
-    _post_tracks[:, 1] = _post_tracks[:, 1] - dy
+    _post_tracks[:, :2] = np.matmul(rmatrix, _post_tracks[:, :2].T).T
+    _post_tracks[:, 0] = _post_tracks[:, 0] + dx
+    _post_tracks[:, 1] = _post_tracks[:, 1] + dy
 
-    center = (2, 2)
-    w = 400 * 1e-4
-
+    center = (1, 2)
+    w = 800 * 1e-4
     pre_mask = (np.abs(_pre_tracks[:, 0] - center[0]) < w) * (
         np.abs(_pre_tracks[:, 1] - center[1]) < w
     )
+    w = 600 * 1e-4
     post_mask = (np.abs(_post_tracks[:, 0] - center[0]) < w) * (
         np.abs(_post_tracks[:, 1] - center[1]) < w
     )
 
+    _pre_tracks = _pre_tracks[pre_mask, :]
+    _post_tracks = _post_tracks[post_mask, :]
+
     fig, ax = plt.subplots()
-    ax.scatter(_pre_tracks[pre_mask, 0], _pre_tracks[pre_mask, 1], s=25)
-    ax.scatter(_post_tracks[post_mask, 0], _post_tracks[post_mask, 1], s=25)
+    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
+    ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1], s=10)
+
+    def matches_between_sets_of_points(a, b, tol=10e-4):
+        """
+        a [n,2]
+        b [m, 2]
+
+        returns
+        m : int
+            Matches between the two sets of points, within tol
+        """
+        na = a.shape[0]
+        match = 0
+        for i in range(na):
+            dist = np.min(np.hypot(a[i, 0] - b[:, 0], a[i, 1] - b[:, 1]))
+            if dist < tol:
+                match += 1
+
+        return match
+
+    print(_pre_tracks.shape, _post_tracks.shape)
+
+    npre = _pre_tracks.shape[0]
+    npost = _post_tracks.shape[0]
+    matches = []
+    shifts = []
+
+    p = 0
+    for i in range(npre):
+        # Shift the post tracks so that
+        xshift, yshift = _post_tracks[p, :] - _pre_tracks[i, :]
+        shifts.append((xshift, yshift))
+        post_shifted = _post_tracks - np.array([xshift, yshift])
+        m = matches_between_sets_of_points(post_shifted, _pre_tracks)
+        matches.append(m)
+
+    print(np.max(matches))
+    xshift, yshift = shifts[np.argmax(matches)]
+
+    print(xshift * 1e4, yshift * 1e4)
 
     # Loop through the frames
 
