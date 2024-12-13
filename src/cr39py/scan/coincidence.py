@@ -1,11 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 from cr39py.scan.base_scan import Scan
 
 
-def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
-    """_summary_
+def _get_rough_alignment_from_fiducials(
+    pre_scan: Scan, post_scan: Scan, plots: bool = True
+) -> tuple[float]:
+    """Roughly align two CR-39 scans based on fiducials recorded in the metadata.
 
     Parameters
     ----------
@@ -21,76 +24,96 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
 
     Returns
     -------
-    dx, dy : float, float
-        mean dx, dy shift in cm
+    rot, dx, dy : tuple[float]
+        rotation in rad, dx, dy shift in cm
 
     """
     # Load the metadata
-    points = ["UL-M", "UR-M", "UL-FE", "UL-NE", "UR-FE", "UR-NE"]
-    x1, x2, y1, y2 = [], [], [], []
-    dx, dy = [], []
+    points = ["UL-FE", "UL-NE", "UR-FE", "UR-NE"]
+    x = {}
 
     for i, point in enumerate(points):
         try:
-            _x1, _y1 = pre_scan.metadata[point]
+            x1, y1 = pre_scan.metadata[point]
         except KeyError as e:
             raise KeyError(
                 f"Pre-etch scan file missing required alignment point {point}"
             ) from e
-        x1.append(_x1)
-        y1.append(_y1)
 
         try:
-            _x2, _y2 = post_scan.metadata[point]
+            x2, y2 = post_scan.metadata[point]
         except KeyError as e:
             raise KeyError(
                 f"Post-etch scan file missing required alignment point {point}"
             ) from e
-        x2.append(_x2)
-        y2.append(_y2)
 
-        # Calculate the shift of the second scan relative to the first in um
-        # Points are saved in cm
-        dx.append((_x2 - _x1))
-        dy.append((_y2 - _y1))
+        x[point] = np.array([x1, y1, x2, y2])
+
+    # Calculate the vectors between each set of points in the pre and post scans
+    pre_vecs = []
+    post_vecs = []
+    weights = []
+    for p1 in points:
+        for p2 in points:
+            if p1 == p2:
+                continue
+
+            x1, y1, x2, y2 = x[p1]
+            _x1, _y1, _x2, _y2 = x[p2]
+
+            # Scipy function is for 3D vectors, so add a third component for Z
+            pre_vec = np.array([_x1 - x1, _y1 - y1, 0])
+            post_vec = np.array([_x2 - x2, _y2 - y2, 0])
+            # Calculate the mean separation of the fiducial pair
+            weight = np.mean(
+                np.array([np.linalg.norm(pre_vec), np.linalg.norm(post_vec)])
+            )
+
+            weights.append(weight)
+            pre_vecs.append(pre_vec)
+            post_vecs.append(post_vec)
+
+    # Find the rotation that best aligns the vectors
+    # Weight the vectors by their lengths: farther separated points should
+    # be given more weight
+    rot, rssd = Rotation.align_vectors(pre_vecs, post_vecs, weights=weights)
+    rot = np.arccos(rot.as_matrix()[0, 0])
+
+    # Create a 2D rotation matrix and rotate the points accordingly
+    rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
+    for point in points:
+        x[point][2:] = np.matmul(rmatrix, x[point][2:])
+
+    # Now calculate dx, dy for each set of points and select the translation
+    dx, dy = [], []
+    for p in points:
+        x1, y1, x2, y2 = x[p]
+        dx.append(x2 - x1)
+        dy.append(y2 - y1)
 
     dx = np.array(dx)
     dy = np.array(dy)
-    theta = theta = np.rad2deg(np.arctan2(dy, dx))
+    theta = np.rad2deg(np.arctan2(dy, dx))
     shift = np.hypot(dx, dy)
 
     if plots:
         fig, ax = plt.subplots()
         ax.set_title("Alignment point movement")
 
-        for i, point in enumerate(points):
+        for i, p in enumerate(points):
+            x1, y1, x2, y2 = x[p]
             ax.quiver(
-                x1[i],
-                y1[i],
-                x2[i] - x1[i],
-                y2[i] - y1[i],
-                label=f"{point}: (theta, shift): {theta[i]:.1f} deg, {shift[i]*1e4:.1f} um",
+                x1,
+                y1,
+                x2 - x1,
+                y2 - y1,
+                label=f"{p}: (rot, dx, dy): {np.rad2deg(rot):.3f} deg, {dx[i]*1e4:.1f} um, {dy[i]*1e4:.1f} um",
                 color=f"C{i}",
             )
 
         ax.legend(loc="lower right")
 
-    """
-    # Remove any points falling more than a standard deviation from the median shift
-    keep = np.array(
-        [np.abs(s - np.median(shift)) < np.std(shift) for s in shift]
-    ).astype(bool)
-    nreject = np.sum(~keep)
-    if np.sum(nreject) > 1:
-        raise ValueError(
-            "Rejecting an unacceptable number of alignment points "
-            f"({nreject}/{dx.size})"
-        )
-    dx = dx[keep]
-    dy = dy[keep]
-    """
-
-    return np.mean(dx), np.mean(dy)
+    return rot, np.mean(dx), np.mean(dy)
 
 
 def coincident_tracks(
@@ -162,50 +185,34 @@ def coincident_tracks(
     """
 
     # Get the alignment shift
-    dx, dy = _get_alignment_point_shift(pre_scan, post_scan, plots=plots)
+    rot, dx, dy = _get_rough_alignment_from_fiducials(pre_scan, post_scan, plots=plots)
 
-    pre_tracks = pre_scan._tracks
-    post_tracks = post_scan._tracks
+    # Get the track data, rotate and translate the second scan
 
-    # Shift the tracks in the post scan based on the alignment points
-    post_tracks[:, 0] = post_tracks[:, 0] - dx
-    post_tracks[:, 1] = post_tracks[:, 1] - dy
+    rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
 
-    # Make sure both scans framesizes are set to the actual microscope
-    # framesize of the first scan
-    pre_scan.set_framesize("XY", pre_scan.metadata["frame_size_x"] * 1e-4)
-    post_scan.set_framesize("XY", pre_scan.metadata["frame_size_x"] * 1e-4)
+    _pre_tracks = pre_scan._tracks
 
-    X, Y = pre_scan._axes["X"].axis(pre_tracks, units=False), pre_scan._axes["Y"].axis(
-        pre_tracks, units=False
+    _post_tracks = post_scan._tracks
+    print(rmatrix.shape)
+    print(_post_tracks[:, :2].shape)
+    _post_tracks[:, :2] = np.matmul(_post_tracks[:, :2], rmatrix)
+    _post_tracks[:, 0] = _post_tracks[:, 0] - dx
+    _post_tracks[:, 1] = _post_tracks[:, 1] - dy
+
+    center = (2, 2)
+    w = 400 * 1e-4
+
+    pre_mask = (np.abs(_pre_tracks[:, 0] - center[0]) < w) * (
+        np.abs(_pre_tracks[:, 1] - center[1]) < w
     )
-    for i in range(X.size):
-        for j in range(Y.size):
-            # Select tracks in or near this frame
-            _pre_mask = (
-                (pre_tracks[:, 0] > X[i])
-                * (pre_tracks[:, 0] < X[i + 1])
-                * (pre_tracks[:, 1] > Y[j])
-                * (pre_tracks[:, 1] < Y[j + 1])
-            )
-            _pre_tracks = pre_tracks[_pre_mask, :2]
+    post_mask = (np.abs(_post_tracks[:, 0] - center[0]) < w) * (
+        np.abs(_post_tracks[:, 1] - center[1]) < w
+    )
 
-            # Select tracks in or near this frame
-            _post_mask = (
-                (post_tracks[:, 0] > X[i])
-                * (post_tracks[:, 0] < X[i + 1])
-                * (post_tracks[:, 1] > Y[j])
-                * (post_tracks[:, 1] < Y[j + 1])
-            )
-            _post_tracks = post_tracks[_post_mask, :2]
-
-            if j == 6:
-                fig, ax = plt.subplots()
-                ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1])
-                ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1])
-                plt.show()
-
-                raise ValueError
+    fig, ax = plt.subplots()
+    ax.scatter(_pre_tracks[pre_mask, 0], _pre_tracks[pre_mask, 1], s=25)
+    ax.scatter(_post_tracks[post_mask, 0], _post_tracks[post_mask, 1], s=25)
 
     # Loop through the frames
 
