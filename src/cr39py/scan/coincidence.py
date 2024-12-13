@@ -77,19 +77,19 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
 
     # Try fine-tuning the correction by looking at tracks within some distance of the alignment point
 
-    point = 2
+    point = 4
 
     center = (x1[point], y1[point])
 
-    dx = 400 * 1e-4  # cm
-    _pre_tracks = np.copy(pre_scan._tracks)
+    dx = 1000 * 1e-4  # cm
+    _pre_tracks = np.copy(pre_scan._selected_tracks)
     _pre_tracks[:, 0] -= x1[point]
     _pre_tracks[:, 1] -= y1[point]
     pre_mask = (np.abs(_pre_tracks[:, 0]) < dx) * (np.abs(_pre_tracks[:, 1]) < dx)
     _pre_tracks = _pre_tracks[pre_mask, :2]
 
-    dx = 200 * 1e-4
-    _post_tracks = np.copy(post_scan._tracks)
+    dx = 600 * 1e-4
+    _post_tracks = np.copy(post_scan._selected_tracks)
     _post_tracks[:, 0] -= x2[point]
     _post_tracks[:, 1] -= y2[point]
     post_mask = (np.abs(_post_tracks[:, 0]) < dx) * (np.abs(_post_tracks[:, 1]) < dx)
@@ -98,50 +98,57 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
     fig, ax = plt.subplots()
     ax.set_title(points[point])
     ax.scatter(0, 0, marker="*", s=50)
-    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
-    ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1], s=5)
+    ax.scatter(_pre_tracks[:, 0] * 1e4, _pre_tracks[:, 1] * 1e4, s=25)
+    ax.scatter(_post_tracks[:, 0] * 1e4, _post_tracks[:, 1] * 1e4, s=5)
 
-    dx = 400 * 1e-4
-    x = np.arange(-dx, dx, 5e-4)
-    y = x
-    X, Y = np.meshgrid(x, y, indexing="ij")
-    pre_map = np.zeros(X.shape)
-    post_map = np.zeros(X.shape)
+    def matches_between_sets_of_points(a, b, tol=10e-4):
+        """
+        a [n,2]
+        b [m, 2]
 
-    sigma = 5 * 1e-4  # um -> cm
-    for k in range(_pre_tracks.shape[0]):
-        r = np.hypot(X - _pre_tracks[k, 0], Y - _pre_tracks[k, 1])
-        pre_map += np.exp(-(r**2) / 2 / sigma**2)
+        returns
+        m : int
+            Matches between the two sets of points, within tol
+        """
+        na = a.shape[0]
+        match = 0
+        for i in range(na):
+            dist = np.min(np.hypot(a[i, 0] - b[:, 0], a[i, 1] - b[:, 1]))
+            if dist < tol:
+                match += 1
 
-    fig, ax = plt.subplots()
-    ax.pcolormesh(x, y, pre_map.T)
+        return match
 
-    sigma = 5 * 1e-4  # um -> cm
-    for k in range(_post_tracks.shape[0]):
-        r = np.hypot(X - _post_tracks[k, 0], Y - _post_tracks[k, 1])
-        post_map += np.exp(-(r**2) / 2 / sigma**2)
+    print(_pre_tracks.shape, _post_tracks.shape)
 
-    fig, ax = plt.subplots()
-    ax.pcolormesh(x, y, post_map.T)
+    npre = _pre_tracks.shape[0]
+    npost = _post_tracks.shape[0]
+    matches = []
+    shifts = []
 
-    from scipy.signal import correlate2d
+    p = 0
+    for i in range(npre):
+        # Shift the post tracks so that
+        xshift, yshift = _post_tracks[p, :] - _pre_tracks[i, :]
+        shifts.append((xshift, yshift))
+        post_shifted = _post_tracks - np.array([xshift, yshift])
+        m = matches_between_sets_of_points(post_shifted, _pre_tracks)
+        matches.append(m)
 
-    cor = correlate2d(pre_map, post_map, mode="same", boundary="fill")
-
-    fig, ax = plt.subplots()
-    ax.pcolormesh(cor)
-
-    maxi = np.argmax(cor)
-    xshift = X.flatten()[maxi]
-    yshift = Y.flatten()[maxi]
+    print(np.max(matches))
+    xshift, yshift = shifts[np.argmax(matches)]
 
     print(xshift * 1e4, yshift * 1e4)
 
     fig, ax = plt.subplots()
     ax.set_title(points[point])
     ax.scatter(0, 0, marker="*", s=50)
-    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
-    ax.scatter(_post_tracks[:, 0] - xshift, _post_tracks[:, 1] - yshift, s=10)
+    ax.scatter(_pre_tracks[:, 0] * 1e4, _pre_tracks[:, 1] * 1e4, s=25)
+    ax.scatter(
+        _post_tracks[:, 0] * 1e4 - xshift * 1e4,
+        _post_tracks[:, 1] * 1e4 - yshift * 1e4,
+        s=10,
+    )
 
     """
     # Remove any points falling more than a standard deviation from the median shift
@@ -157,8 +164,8 @@ def _get_alignment_point_shift(pre_scan: Scan, post_scan: Scan, plots=True):
     dx = dx[keep]
     dy = dy[keep]
     """
-
-    return np.mean(dx), np.mean(dy)
+    return 0, 0
+    # return np.mean(dx), np.mean(dy)
 
 
 def coincident_tracks(
