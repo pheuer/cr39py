@@ -26,11 +26,39 @@ __all__ = ["Axis", "Scan"]
 
 
 class Axis(ExportableClassMixin):
-    """Represents an axis of a CR-39 scan"""
+    """Represents an axis of a CR-39 scan
+
+    Parameters
+    ----------
+
+    ind : int
+        Index of the track data array corresponding to this axis.
+
+    unit : u.Quantity
+        Unit for this axis.
+
+    default_range : tuple[float]
+        Defaults for the (min, max, framesize) of this axis. Values are
+        floats in the unit set by the unit keyword. Any of the values can
+        be None, in which case the range will be automatically determined
+        from the track data.
+
+    """
 
     _exportable_attributes = ["ind", "_unit", "_default_range", "framesize"]
 
-    def __init__(self, ind=None, unit=None, default_range=(None, None, None)) -> None:
+    def __init__(
+        self,
+        ind: int = None,
+        unit: u.Quantity = None,
+        default_range: tuple[float | None] = (None, None, None),
+    ) -> None:
+
+        if ind is None:
+            raise ValueError("ind argument is required")
+
+        if unit is None:
+            raise ValueError("unit argument is required")
 
         # These parameters are intended to not be mutable
         self._ind = ind
@@ -45,17 +73,29 @@ class Axis(ExportableClassMixin):
 
     @property
     def ind(self) -> int:
+        """The array index for this axis.
+
+        Returns
+        -------
+        index : int
+        """
         return self._ind
 
     @property
     def unit(self):
+        """Unit of this axis.
+
+        Returns
+        -------
+        unit : u.Quantity
+        """
         return self._unit
 
     @property
     def default_range(self):
         """
         Default range (min, max, framesize) for this axis.
-        None means set based on data bounds
+        None means set based on data bounds.
         """
         return self._default_range
 
@@ -123,14 +163,13 @@ class Axis(ExportableClassMixin):
     @cached_property
     def axis(self) -> np.ndarray | u.Quantity:
         """
-        Axis calculated for the provided array of tracks.
+        Axis calculated for the array of tracks.
 
-        Parameters
-        ----------
+        Returns
+        -------
 
-        tracks : `~numpy.ndarray` (ntracks,6)
-            Tracks for which the axis should be created.
-
+        axis : u.Quantity
+            Axis array
         """
 
         # Calculate a min and max value for the axis
