@@ -26,7 +26,7 @@ __all__ = ["Axis", "Scan"]
 
 
 class Axis(ExportableClassMixin):
-    """Represents an axis of a CR-39 scan
+    """An axis of a CR-39 scan.
 
     Parameters
     ----------
@@ -95,7 +95,8 @@ class Axis(ExportableClassMixin):
     def default_range(self):
         """
         Default range (min, max, framesize) for this axis.
-        None means set based on data bounds.
+        Any values that are set to None will be estimated based
+        on the track data automatically.
         """
         return self._default_range
 
@@ -151,6 +152,11 @@ class Axis(ExportableClassMixin):
     def tracks(self) -> TrackData:
         """
         Tracks associated with this axis.
+
+        Setting this property calls a setter method that resets
+        the framesize and axis using the new tracks. This is done
+        programmatically in Scan every time a new set of
+        tracks is selected.
         """
         return self._tracks
 
@@ -161,7 +167,7 @@ class Axis(ExportableClassMixin):
         self._reset_axis()
 
     @cached_property
-    def axis(self) -> np.ndarray | u.Quantity:
+    def axis(self) -> u.Quantity:
         """
         Axis calculated for the array of tracks.
 
