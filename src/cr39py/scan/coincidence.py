@@ -78,11 +78,14 @@ def _get_rough_alignment_from_fiducials(
     # be given more weight
     rot, rssd = Rotation.align_vectors(pre_vecs, post_vecs, weights=weights)
     rot = -np.arccos(rot.as_matrix()[0, 0])
+    print(np.rad2deg(rot))
 
     # Create a 2D rotation matrix and rotate the points accordingly
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
     for point in points:
         x[point][2:] = np.matmul(rmatrix, x[point][2:])
+
+    print(x)
 
     # Now calculate dx, dy for each set of points and select the translation
     # dx, dy are the vector FROM the post scan TO the pre scan, so that ADDING
@@ -201,11 +204,11 @@ def coincident_tracks(
     _post_tracks[:, 1] = _post_tracks[:, 1] + dy
 
     center = (1, 2)
-    w = 800 * 1e-4
+    w = 300 * 1e-4
     pre_mask = (np.abs(_pre_tracks[:, 0] - center[0]) < w) * (
         np.abs(_pre_tracks[:, 1] - center[1]) < w
     )
-    w = 600 * 1e-4
+    w = 200 * 1e-4
     post_mask = (np.abs(_post_tracks[:, 0] - center[0]) < w) * (
         np.abs(_post_tracks[:, 1] - center[1]) < w
     )
@@ -217,44 +220,53 @@ def coincident_tracks(
     ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
     ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1], s=10)
 
-    def matches_between_sets_of_points(a, b, tol=10e-4):
-        """
-        a [n,2]
-        b [m, 2]
+    pre_points = [list(_pre_tracks[i, :]) for i in range(_pre_tracks.shape[0])]
+    post_points = [list(_post_tracks[i, :]) for i in range(_post_tracks.shape[0])]
 
-        returns
-        m : int
-            Matches between the two sets of points, within tol
-        """
-        na = a.shape[0]
-        match = 0
-        for i in range(na):
-            dist = np.min(np.hypot(a[i, 0] - b[:, 0], a[i, 1] - b[:, 1]))
-            if dist < tol:
-                match += 1
+    import itertools
 
-        return match
+    pre_combs = list(itertools.combinations(range(len(pre_points)), 3))
+    post_combs = list(itertools.combinations(range(len(post_points)), 3))
 
-    print(_pre_tracks.shape, _post_tracks.shape)
+    # https://stackoverflow.com/questions/43126580/match-set-of-x-y-points-to-another-set-that-is-scaled-rotated-translated-and
+    def get_triangles(points, combinations):
+        triangles = []
+        for p0, p1, p2 in combinations:
+            d1 = np.hypot(points[p0][0] - points[p1][0], points[p0][1] - points[p1][1])
+            d2 = np.hypot(points[p0][0] - points[p2][0], points[p0][1] - points[p2][1])
+            d3 = np.hypot(points[p1][0] - points[p2][0], points[p1][1] - points[p2][1])
+            d_min = min(d1, d2, d3)
+            d_unsort = [d1 / d_min, d2 / d_min, d3 / d_min]
+            triangles.append(sorted(d_unsort))
+        return triangles
 
-    npre = _pre_tracks.shape[0]
-    npost = _post_tracks.shape[0]
-    matches = []
-    shifts = []
+    pre_triangles = get_triangles(pre_points, pre_combs)
+    post_triangles = get_triangles(post_points, post_combs)
 
-    p = 0
-    for i in range(npre):
-        # Shift the post tracks so that
-        xshift, yshift = _post_tracks[p, :] - _pre_tracks[i, :]
-        shifts.append((xshift, yshift))
-        post_shifted = _post_tracks - np.array([xshift, yshift])
-        m = matches_between_sets_of_points(post_shifted, _pre_tracks)
-        matches.append(m)
+    def sumTriangles(A_triang, B_triang):
+        tr_sum, tr_idx = [], []
+        for i, A_tr in enumerate(A_triang):
+            for j, B_tr in enumerate(B_triang):
+                # Absolute value of lengths differences.
+                tr_diff = abs(np.array(A_tr) - np.array(B_tr))
+                # Sum the differences
+                tr_sum.append(sum(tr_diff))
+                tr_idx.append([i, j])
 
-    print(np.max(matches))
-    xshift, yshift = shifts[np.argmax(matches)]
+        # Index of the triangles in A and B with the smallest sum of absolute
+        # length differences.
+        tr_idx_min = tr_idx[tr_sum.index(min(tr_sum))]
+        A_idx, B_idx = tr_idx_min[0], tr_idx_min[1]
+        print("Smallest difference: {}".format(min(tr_sum)))
 
-    print(xshift * 1e4, yshift * 1e4)
+        return A_idx, B_idx
+
+    # Index of the A and B triangles with the smallest difference.
+    A_idx, B_idx = sumTriangles(pre_triangles, post_triangles)
+
+    # Indexes of points in A and B of the best match triangles.
+    A_idx_pts, B_idx_pts = pre_combs[A_idx], post_combs[B_idx]
+    print(f"triangle A {A_idx_pts} matches triangle B {B_idx_pts}")
 
     # Loop through the frames
 
