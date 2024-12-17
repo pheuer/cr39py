@@ -18,7 +18,7 @@ from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.core.types import TrackData
 from cr39py.core.units import unit_registry as u
 from cr39py.models.response import TwoParameterModel
-from cr39py.scan.cpsa import read_cpsa
+from cr39py.scan.cpsa import extract_etch_time, read_cpsa
 from cr39py.scan.cut import Cut
 from cr39py.scan.subset import Subset
 
@@ -164,7 +164,6 @@ class Axis(ExportableClassMixin):
     def tracks(self, tracks: TrackData) -> None:
         self._tracks = tracks
         self._reset_default_framesize()
-        self._reset_axis()
 
     @cached_property
     def axis(self) -> u.Quantity:
@@ -306,7 +305,7 @@ class Scan(ExportableClassMixin):
         return obj
 
     @classmethod
-    def from_cpsa(cls, path: Path, etch_time: float):
+    def from_cpsa(cls, path: Path, etch_time: float | None = None):
         """
         Initialize a Scan object from a CPSA file.
 
@@ -319,6 +318,13 @@ class Scan(ExportableClassMixin):
             Etch time in minutes.
 
         """
+        if etch_time is None:
+            etch_time = extract_etch_time(path)
+        if etch_time is None:
+            raise ValueError(
+                "Etch time not provided or successfully extracted from CPSA filename."
+            )
+
         tracks = read_cpsa(path)
 
         return cls.from_tracks(tracks, etch_time)

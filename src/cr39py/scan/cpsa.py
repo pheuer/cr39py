@@ -3,6 +3,7 @@ This module contains code for handling the MIT CPSA format for CR39
 track data.
 """
 
+import re
 from collections import namedtuple
 from pathlib import Path
 
@@ -205,3 +206,40 @@ def read_cpsa(path: Path) -> TrackData:
     yax = np.sort(yax)
 
     return tracks
+
+
+def extract_etch_time(path: Path) -> float:
+    """Attempts to extract the etch time from a CPSA filename.
+
+    Expects an entry like ``_#m_``, ``_#h_``, ``_#hr_``, etc.
+
+    Parameters
+    ----------
+
+    path : `~pathlib.Path`
+        Filepath, from which only the file name will be searched.
+
+    Returns
+    -------
+
+    etch_time : float|None
+        Etch time in minutes. If no etch time is extracted,
+        returns None.
+
+    """
+
+    # Cast the filename as lowercase, so "H" and "h" will both match
+    filename = str(path.name).lower()
+
+    # Possible labels, and their conversion factors to minutes
+    tags = {"m": 1, "min": 1, "h": 60, "hr": 60}
+    for tag in tags:
+        # Search the filename for the matching pattern
+        m = re.search(f"([0-9]+){tag}", filename)
+        # If any match is found, convert the matched numeric
+        # group to a float, multiply by the conversion factor,
+        # then return
+        if m is not None:
+            return float(m.group(1)) * tags[tag]
+
+    return None
