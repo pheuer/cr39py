@@ -81,7 +81,7 @@ def _get_rough_alignment_from_fiducials(
     )
     rot = -np.arccos(rot.as_matrix()[0, 0])
 
-    center = np.mean(pre_scan._tracks[:, :2], axis=0)
+    center = x["UL-FE"][:2]
 
     # Create a 2D rotation matrix and rotate the points accordingly
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
@@ -191,6 +191,29 @@ def coincident_tracks(
 
     """
 
+    def makeplot(*args, w=400 * 1e-4, center=(0, 0), figax=None, labels=None):
+
+        if figax is not None:
+            fig, ax = figax
+        else:
+            fig, ax = plt.subplots()
+
+        for i, tracks in enumerate(args):
+
+            mask = (np.abs(tracks[:, 0] - center[0]) < w) * (
+                np.abs(tracks[:, 1] - center[1]) < w
+            )
+
+            tracks = tracks[mask, :]
+
+            if labels is not None:
+                lbl = labels[i]
+            else:
+                lbl = None
+            ax.scatter(tracks[:, 0], tracks[:, 1], s=15, label=lbl)
+
+        ax.legend(loc="upper left")
+
     # Get the alignment shift
     center, rot, dx, dy = _get_rough_alignment_from_fiducials(
         pre_scan, post_scan, plots=plots
@@ -200,6 +223,10 @@ def coincident_tracks(
     _pre_tracks = np.copy(pre_scan._tracks[:, :2])
     _post_tracks = np.copy(post_scan._tracks[:, :2])
 
+    fig_center = center - np.array([400, 400]) * 1e-4
+    figax = plt.subplots()
+    makeplot(_pre_tracks, center=fig_center, figax=figax, labels=["Pre"])
+
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
     p = _post_tracks[:, :2] - center
     _post_tracks[:, :2] = np.matmul(rmatrix, p.T).T + center
@@ -207,22 +234,7 @@ def coincident_tracks(
     _post_tracks[:, 0] = _post_tracks[:, 0] + dx
     _post_tracks[:, 1] = _post_tracks[:, 1] + dy
 
-    center = (1, 2)
-    w = 800 * 1e-4
-    pre_mask = (np.abs(_pre_tracks[:, 0] - center[0]) < w) * (
-        np.abs(_pre_tracks[:, 1] - center[1]) < w
-    )
-    w = 600 * 1e-4
-    post_mask = (np.abs(_post_tracks[:, 0] - center[0]) < w) * (
-        np.abs(_post_tracks[:, 1] - center[1]) < w
-    )
-
-    _pre_tracks = _pre_tracks[pre_mask, :]
-    _post_tracks = _post_tracks[post_mask, :]
-
-    fig, ax = plt.subplots()
-    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
-    ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1], s=10)
+    makeplot(_post_tracks, center=fig_center, figax=figax, labels=["Post shift"])
 
     def matches_between_sets_of_points(a, b, tol=10e-4):
         """
@@ -241,27 +253,6 @@ def coincident_tracks(
                 match += 1
 
         return match
-
-    print(_pre_tracks.shape, _post_tracks.shape)
-
-    npre = _pre_tracks.shape[0]
-    npost = _post_tracks.shape[0]
-    matches = []
-    shifts = []
-
-    p = 0
-    for i in range(npre):
-        # Shift the post tracks so that
-        xshift, yshift = _post_tracks[p, :] - _pre_tracks[i, :]
-        shifts.append((xshift, yshift))
-        post_shifted = _post_tracks - np.array([xshift, yshift])
-        m = matches_between_sets_of_points(post_shifted, _pre_tracks)
-        matches.append(m)
-
-    print(np.max(matches))
-    xshift, yshift = shifts[np.argmax(matches)]
-
-    print(xshift * 1e4, yshift * 1e4)
 
     # Loop through the frames
 
