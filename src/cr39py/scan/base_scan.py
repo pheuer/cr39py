@@ -301,7 +301,7 @@ class Scan(ExportableClassMixin):
 
         # Attach the selected tracks object to the axes objects
         for ax in obj._axes.values():
-            ax.tracks = obj._selected_tracks
+            ax.tracks = obj.selected_tracks
 
         return obj
 
@@ -771,8 +771,8 @@ class Scan(ExportableClassMixin):
 
         return ax0.axis, ax1.axis, arr
 
-    def overlap_parameter_histogram(self) -> tuple[np.ndarray]:
-        """The Zylstra overlap parameter for each cell.
+    def chi(self) -> tuple[np.ndarray]:
+        """The Zylstra overlap parameter ``chi`` for each cell.
 
         Only includes currently selected tracks.
 
@@ -788,6 +788,10 @@ class Scan(ExportableClassMixin):
         chi : `~np.ndarray`
             Histogram of chi for each cell
 
+        Notes
+        -----
+        See A. B. Zylstra et al. Nucl. Instrum. Methods Phys. Res. A 2012
+
         """
         x, y, ntracks = self.histogram(axes=("X", "Y"))
         x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
@@ -801,6 +805,47 @@ class Scan(ExportableClassMixin):
         ).to(u.dimensionless)
 
         return x, y, chi
+
+    def F2(self) -> tuple[np.ndarray]:
+        """The Zylstra overlap parameter ``F2`` for each cell.
+
+        F2 is the fraction of tracks that overlap one other track, and
+        is a reasonable approximation of the number of tracks that will
+        be lost due to track overlap.
+
+        .. math::
+           F_2 = \chi (1 - 2\chi/3)
+
+        As shown in the paper, this analytical model starts to fail
+        when the ``chi`` parameter excceeds about 25%. Above this
+        threshold, the analytical model over-estimtates the true
+        number of track overlaps (according to Monte-Carlo simulations).
+
+        Only includes currently selected tracks.
+
+        Returns
+        -------
+
+        hax  : `~np.ndarray`
+            Horizontal axis
+
+        vax : `~np.ndarray`
+            Vertical axis
+
+        F2 : `~np.ndarray`
+            Histogram of F2 for each cell
+
+        Notes
+        -----
+        See A. B. Zylstra et al. Nucl. Instrum. Methods Phys. Res. A 2012
+
+        """
+
+        x, y, chi = self.chi()
+
+        F2 = chi * (1 - 2 * chi / 3)
+
+        return x, y, F2
 
     # *************************************************************************
     # Track Manipulation
@@ -824,7 +869,8 @@ class Scan(ExportableClassMixin):
         In addition to the track quantities [X,Y,D,C,E,Z], the following
         custom quantities can also be plotted:
 
-        - CHI : The track overlap parameter from Zylstra et al. 2012
+        - CHI : The ``chi`` track overlap parameter from Zylstra et al. 2012
+        - F2 : The ``F2`` track overlap parameter from Zylstra et al. 2012
 
         Parameters
         ----------
@@ -902,7 +948,9 @@ class Scan(ExportableClassMixin):
 
         # Get the requested histogram
         if quantity == "CHI":
-            xax, yax, arr = self.overlap_parameter_histogram()
+            xax, yax, arr = self.chi()
+        elif quantity == "F2":
+            xax, yax, arr = self.F2()
         else:
             xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
 
