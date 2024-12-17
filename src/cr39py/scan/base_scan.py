@@ -792,11 +792,6 @@ class Scan(ExportableClassMixin):
         x, y, ntracks = self.histogram(axes=("X", "Y"))
         x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
 
-        print(self._axes["X"].framesize)
-        print(self._axes["X"].framesize)
-        print(D.u)
-        print(ntracks.u)
-
         chi = (
             ntracks
             / self._axes["X"].framesize
