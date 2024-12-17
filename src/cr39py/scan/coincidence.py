@@ -181,8 +181,8 @@ def coincident_tracks(
     )
 
     # Get the track data, rotate and translate the second scan
-    _pre_tracks = np.copy(pre_scan._tracks[:, :2])
-    _post_tracks = np.copy(post_scan._tracks[:, :2])
+    _pre_tracks = np.copy(pre_scan.selected_tracks[:, :2])
+    _post_tracks = np.copy(post_scan.selected_tracks[:, :2])
 
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
     p = _post_tracks[:, :2] - center
@@ -191,11 +191,11 @@ def coincident_tracks(
     _post_tracks[:, 0] = _post_tracks[:, 0] + dx
     _post_tracks[:, 1] = _post_tracks[:, 1] + dy
 
-    w = 500 * 1e-4
+    w = 300 * 1e-4
     pre_mask = (np.abs(_pre_tracks[:, 0] - center[0]) < w) * (
         np.abs(_pre_tracks[:, 1] - center[1]) < w
     )
-    w = 500 * 1e-4
+
     post_mask = (np.abs(_post_tracks[:, 0] - center[0]) < w) * (
         np.abs(_post_tracks[:, 1] - center[1]) < w
     )
