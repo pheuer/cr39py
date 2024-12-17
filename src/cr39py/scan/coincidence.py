@@ -76,13 +76,18 @@ def _get_rough_alignment_from_fiducials(
     # Find the rotation that best aligns the vectors
     # Weight the vectors by their lengths: farther separated points should
     # be given more weight
-    rot, rssd = Rotation.align_vectors(pre_vecs, post_vecs, weights=weights)
+    rot, rssd, sens = Rotation.align_vectors(
+        pre_vecs, post_vecs, weights=weights, return_sensitivity=True
+    )
     rot = -np.arccos(rot.as_matrix()[0, 0])
+
+    center = np.mean(pre_scan._tracks[:, :2], axis=0)
 
     # Create a 2D rotation matrix and rotate the points accordingly
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
     for point in points:
-        x[point][2:] = np.matmul(rmatrix, x[point][2:])
+        p = x[point][2:] - center
+        x[point][2:] = np.matmul(rmatrix, p) + center
 
     # Now calculate dx, dy for each set of points and select the translation
     # dx, dy are the vector FROM the post scan TO the pre scan, so that ADDING
@@ -115,7 +120,7 @@ def _get_rough_alignment_from_fiducials(
 
         ax.legend(loc="lower right")
 
-    return rot, np.mean(dx), np.mean(dy)
+    return center, rot, np.mean(dx), np.mean(dy)
 
 
 def coincident_tracks(
@@ -187,16 +192,18 @@ def coincident_tracks(
     """
 
     # Get the alignment shift
-    rot, dx, dy = _get_rough_alignment_from_fiducials(pre_scan, post_scan, plots=plots)
+    center, rot, dx, dy = _get_rough_alignment_from_fiducials(
+        pre_scan, post_scan, plots=plots
+    )
 
     # Get the track data, rotate and translate the second scan
-
-    rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
-
     _pre_tracks = np.copy(pre_scan._tracks[:, :2])
     _post_tracks = np.copy(post_scan._tracks[:, :2])
 
-    _post_tracks[:, :2] = np.matmul(rmatrix, _post_tracks[:, :2].T).T
+    rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
+    p = _post_tracks[:, :2] - center
+    _post_tracks[:, :2] = np.matmul(rmatrix, p.T).T + center
+
     _post_tracks[:, 0] = _post_tracks[:, 0] + dx
     _post_tracks[:, 1] = _post_tracks[:, 1] + dy
 
