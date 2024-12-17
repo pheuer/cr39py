@@ -49,39 +49,20 @@ def _get_rough_alignment_from_fiducials(
 
         x[point] = np.array([x1, y1, x2, y2])
 
-    # Calculate the vectors between each set of points in the pre and post scans
-    pre_vecs = []
-    post_vecs = []
-    weights = []
-    for p1 in points:
-        for p2 in points:
-            if p1 == p2:
-                continue
+    x1, y1, x2, y2 = x["UL-NE"]
+    _x1, _y1, _x2, _y2 = x["UR-NE"]
 
-            x1, y1, x2, y2 = x[p1]
-            _x1, _y1, _x2, _y2 = x[p2]
-
-            # Scipy function is for 3D vectors, so add a third component for Z
-            pre_vec = np.array([_x1 - x1, _y1 - y1, 0])
-            post_vec = np.array([_x2 - x2, _y2 - y2, 0])
-            # Calculate the mean separation of the fiducial pair
-            weight = np.mean(
-                np.array([np.linalg.norm(pre_vec), np.linalg.norm(post_vec)])
-            )
-
-            weights.append(weight)
-            pre_vecs.append(pre_vec)
-            post_vecs.append(post_vec)
+    # Scipy function is for 3D vectors, so add a third component for Z
+    pre_vec = np.array([_x1 - x1, _y1 - y1, 0])
+    post_vec = np.array([_x2 - x2, _y2 - y2, 0])
 
     # Find the rotation that best aligns the vectors
     # Weight the vectors by their lengths: farther separated points should
     # be given more weight
-    rot, rssd, sens = Rotation.align_vectors(
-        pre_vecs, post_vecs, weights=weights, return_sensitivity=True
-    )
+    rot, rssd = Rotation.align_vectors(pre_vec, post_vec)
     rot = -np.arccos(rot.as_matrix()[0, 0])
 
-    center = np.mean(pre_scan._tracks[:, :2], axis=0)
+    center = x["UL-NE"][:2]
 
     # Create a 2D rotation matrix and rotate the points accordingly
     rmatrix = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
@@ -120,7 +101,10 @@ def _get_rough_alignment_from_fiducials(
 
         ax.legend(loc="lower right")
 
-    return center, rot, np.mean(dx), np.mean(dy)
+    dx = x["UL-NE"][0] - x["UL-NE"][2]
+    dy = x["UL-NE"][1] - x["UL-NE"][3]
+
+    return center, rot, dx, dy
 
 
 def coincident_tracks(
@@ -207,12 +191,11 @@ def coincident_tracks(
     _post_tracks[:, 0] = _post_tracks[:, 0] + dx
     _post_tracks[:, 1] = _post_tracks[:, 1] + dy
 
-    center = (1, 2)
-    w = 800 * 1e-4
+    w = 500 * 1e-4
     pre_mask = (np.abs(_pre_tracks[:, 0] - center[0]) < w) * (
         np.abs(_pre_tracks[:, 1] - center[1]) < w
     )
-    w = 600 * 1e-4
+    w = 500 * 1e-4
     post_mask = (np.abs(_post_tracks[:, 0] - center[0]) < w) * (
         np.abs(_post_tracks[:, 1] - center[1]) < w
     )
@@ -221,47 +204,8 @@ def coincident_tracks(
     _post_tracks = _post_tracks[post_mask, :]
 
     fig, ax = plt.subplots()
-    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=25)
+    ax.scatter(_pre_tracks[:, 0], _pre_tracks[:, 1], s=15)
     ax.scatter(_post_tracks[:, 0], _post_tracks[:, 1], s=10)
-
-    def matches_between_sets_of_points(a, b, tol=10e-4):
-        """
-        a [n,2]
-        b [m, 2]
-
-        returns
-        m : int
-            Matches between the two sets of points, within tol
-        """
-        na = a.shape[0]
-        match = 0
-        for i in range(na):
-            dist = np.min(np.hypot(a[i, 0] - b[:, 0], a[i, 1] - b[:, 1]))
-            if dist < tol:
-                match += 1
-
-        return match
-
-    print(_pre_tracks.shape, _post_tracks.shape)
-
-    npre = _pre_tracks.shape[0]
-    npost = _post_tracks.shape[0]
-    matches = []
-    shifts = []
-
-    p = 0
-    for i in range(npre):
-        # Shift the post tracks so that
-        xshift, yshift = _post_tracks[p, :] - _pre_tracks[i, :]
-        shifts.append((xshift, yshift))
-        post_shifted = _post_tracks - np.array([xshift, yshift])
-        m = matches_between_sets_of_points(post_shifted, _pre_tracks)
-        matches.append(m)
-
-    print(np.max(matches))
-    xshift, yshift = shifts[np.argmax(matches)]
-
-    print(xshift * 1e4, yshift * 1e4)
 
     # Loop through the frames
 
