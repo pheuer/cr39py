@@ -869,7 +869,8 @@ class Scan(ExportableClassMixin):
         In addition to the track quantities [X,Y,D,C,E,Z], the following
         custom quantities can also be plotted:
 
-        - CHI : The track overlap parameter from Zylstra et al. 2012
+        - CHI : The ``chi`` track overlap parameter from Zylstra et al. 2012
+        - F2 : The ``F2`` track overlap parameter from Zylstra et al. 2012
 
         Parameters
         ----------
