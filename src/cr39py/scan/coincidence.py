@@ -188,6 +188,10 @@ def coincident_tracks(
     D. T. Casey et al. RSI 2011 https://doi.org/10.1063/1.3605483
     B. Lahmann et al. RSI 2016 https://doi.org/10.1063/1.4958910
 
+    I. Lengar et al. NIMB 2002 https://doi.org/10.1016/S0168-583X(02)00483-4
+    - Coincidence counting between two foils, just says two fiducials were used
+    for alignment. Coincidence radius was 15 um
+
 
     """
 
