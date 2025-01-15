@@ -240,6 +240,8 @@ class Scan(ExportableClassMixin):
         # Etch time, u.Quantity
         self._etch_time = None
 
+        self.metadata = {}
+
     @property
     def tracks(self) -> TrackData:
         """
@@ -281,7 +283,9 @@ class Scan(ExportableClassMixin):
     # **********************************
 
     @classmethod
-    def from_tracks(cls, tracks: TrackData, etch_time: float):
+    def from_tracks(
+        cls, tracks: TrackData, etch_time: float, metadata: dict | None = None
+    ):
         """
         Initialize a Scan object from an array of tracks.
 
@@ -292,11 +296,18 @@ class Scan(ExportableClassMixin):
 
         etch_time : float
             Etch time in minutes.
+
+        metadata : dict
+            Dictionary of metadata to attach to the Scan object.
         """
         obj = cls()
 
+        if metadata is None:
+            metadata = {}
+
         obj._etch_time = etch_time * u.min
         obj._tracks = tracks
+        obj.metadata = metadata
 
         # Attach the selected tracks object to the axes objects
         for ax in obj._axes.values():
@@ -309,6 +320,10 @@ class Scan(ExportableClassMixin):
         """
         Initialize a Scan object from a CPSA file.
 
+        The etch_time can be automatically extracted from the filename
+        if it is included in a format like  ``_#m_``, ``_#min_``, ``_#h_``,
+        ``_#hr_``, etc.
+
         Parameters
         ---------
         path : `~pathlib.Path`
@@ -318,6 +333,9 @@ class Scan(ExportableClassMixin):
             Etch time in minutes.
 
         """
+
+        # If the etch time is not provided, attempt to automatically extract
+        # from the CPSA filename
         if etch_time is None:
             etch_time = extract_etch_time(path)
         if etch_time is None:
@@ -325,9 +343,9 @@ class Scan(ExportableClassMixin):
                 "Etch time not provided or successfully extracted from CPSA filename."
             )
 
-        tracks = read_cpsa(path)
+        tracks, metadata = read_cpsa(path)
 
-        return cls.from_tracks(tracks, etch_time)
+        return cls.from_tracks(tracks, etch_time, metadata=metadata)
 
     # **********************************
     # Framesize setup

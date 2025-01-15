@@ -32,7 +32,7 @@ class SilentPlotting:
 
     def __enter__(self):
         warnings.filterwarnings(
-            "ignore", message="FigureCanvasAgg", category=UserWarning
+            "ignore", "FigureCanvasAgg is non-interactive, and thus cannot be shown"
         )
         self.current_backend = get_backend()
         plt.close("all")
@@ -41,4 +41,3 @@ class SilentPlotting:
     def __exit__(self, exc_type, exc_val, exc_tb):
         plt.close("all")
         matplotlib_use(self.current_backend)
-        warnings.resetwarnings()
