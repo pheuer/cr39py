@@ -18,7 +18,7 @@ class Layer(ExportableClassMixin):
     _exportable_attributes = ["thickness", "material", "active", "name"]
 
     def __init__(self):
-
+        """A layer of a filtration stack."""
         # Cache of SRIM data tables: keys are particle names (lowercase)
         # and values are SRIMData objects for each key
         self._srim_data = {}
@@ -66,7 +66,7 @@ class Layer(ExportableClassMixin):
         """
         Create a layer from a string of the following form
 
-        ##### UNIT MATERIAL
+        [Thickness] [unit string] [material string]
         """
 
         # Split the string by whitespace
