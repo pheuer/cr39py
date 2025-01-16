@@ -8,7 +8,7 @@ requires = [
 
 [project]
 name = "cr39py"
-version = "2024.11"
+version = "2025.1"
 authors = [
   {name = "Peter Heuer"},
   ]
@@ -31,6 +31,7 @@ dependencies = [
     "matplotlib >= 3.7.0",
     "numpy >= 1.24.0",
     'pint>=0.24.3',
+    'scipy>=1.14.1',
     "tqdm >= 4.65.0",
     "setuptools >= 66.0.0",
   ]

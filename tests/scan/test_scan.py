@@ -14,7 +14,7 @@ from cr39py.scan.subset import Subset
 
 @pytest.fixture
 def cr39scan():
-    cpsa_path = data_dir / Path("test_alphas.cpsa")
+    cpsa_path = data_dir / Path("test/test_alphas.cpsa")
     return Scan.from_cpsa(cpsa_path, etch_time=120)
 
 

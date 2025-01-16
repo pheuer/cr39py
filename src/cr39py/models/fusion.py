@@ -3,10 +3,12 @@ The `~cr39py.models.fusion` module contains functions relating to the fusion rea
 the charged particles detected by CR39.
 """
 
+from pathlib import Path
+
 import h5py
 import numpy as np
 
-from cr39py.core.data import get_resource_path
+from cr39py.core.data import data_dir
 from cr39py.core.units import u
 
 _reaction_data = {
@@ -93,7 +95,7 @@ def cross_section(
             f"Reaction {reaction} not recognized. Valid inputs are " f"{reactions}"
         )
 
-    path = get_resource_path(_reaction_data[reaction])
+    path = data_dir / Path(f"nuclear/{_reaction_data[reaction]}")
     with h5py.File(path, "r") as f:
         _energies = f["energy"][:]  # eV
         xs = f["SIG"][:]  # m^2
