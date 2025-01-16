@@ -11,11 +11,11 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information
 
 project = "cr39py"
-copyright = "2024, Peter Heuer"
+copyright = "2025, Peter Heuer"
 author = "Peter Heuer"
 
 release = "0.1"
-version = "2024.11"
+version = "2025.1"
 
 # -- General configuration
 
