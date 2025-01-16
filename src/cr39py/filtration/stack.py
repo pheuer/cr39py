@@ -1,3 +1,10 @@
+"""
+The `~cr39py.filtration.stack` module contains the Layer and Stack classes, which
+are used to represent filtration stacks composed of multiple layers of material.
+
+These classes can be used to calculate particle ranging in detector filters.
+"""
+
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
 
@@ -28,7 +35,7 @@ class Layer(ExportableClassMixin):
         A layer in a detector stack stack. The layer could either be an active
         layer (a piece of film or other recording media)
         or an inactive layer (a filter or inactive part of the film, such as
-                              a substrate )
+        a substrate )
 
         Parameters
         ----------
@@ -266,14 +273,18 @@ class Layer(ExportableClassMixin):
 @saveable_class()
 class Stack(ExportableClassMixin):
     r"""
-    An ordered list of Layers
-
+    An ordered list of `~cr39py.filtration.stack.Layer` objects.
     """
 
     _exportable_attributes = ["layers"]
 
     @classmethod
     def from_layers(cls, *args):
+        """Creates a stack from a sequence of Layers.
+
+        Each layer should be provided as a separate argument.
+        """
+
         obj = cls()
 
         # Replace any strings with Layer objects
