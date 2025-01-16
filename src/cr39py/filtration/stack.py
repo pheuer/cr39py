@@ -3,18 +3,24 @@ from scipy.integrate import cumulative_trapezoid
 
 from cr39py.core.exportable_class import ExportableClassMixin, saveable_class
 from cr39py.core.units import unit_registry as u
-from cr39py.filtration.material import Material
+from cr39py.filtration.srim import SRIMData
 
 
 @saveable_class()
 class Layer(ExportableClassMixin):
     _exportable_attributes = ["thickness", "material", "active", "name"]
 
+    def __init__(self):
+
+        # Cache of SRIM data tables: keys are particle names (lowercase)
+        # and values are SRIMData objects for each key
+        self._srim_data = {}
+
     @classmethod
     def from_properties(
         cls,
         thickness: u.Quantity,
-        material: str | Material,
+        material: str,
         active: bool = True,
         name: str = "",
     ):
@@ -31,7 +37,8 @@ class Layer(ExportableClassMixin):
             The thickness of the layer, in units convertible to meters.
 
         material : `Material`
-            Material of the layer
+            Material of the layer: should correspond to the name of the materials
+            in filenames of the stopping power data in the data/srim directory.
 
         active : `bool`, optional
             If `True`, this layer is marked as an active layer. The default is `True`.
@@ -41,10 +48,6 @@ class Layer(ExportableClassMixin):
 
         """
         obj = cls()
-
-        if isinstance(material, str):
-            material = Material.from_string(material)
-
         obj.thickness = thickness
         obj.material = material
         obj.name = name
@@ -66,7 +69,7 @@ class Layer(ExportableClassMixin):
 
         unit = u(s[1])
         thickness = float(s[0]) * unit
-        material = Material.from_string(s[2])
+        material = s[2]
 
         # TODO: support active/inactive and name here as optional
         # additional entries
@@ -77,13 +80,187 @@ class Layer(ExportableClassMixin):
 
         return (
             self.thickness == other.thickness
-            and self.material == other.material
+            and self.material.lower() == other.material.lower()
             and self.name == other.name
             and self.active == other.active
         )
 
     def __str__(self):
         return f"{self.thickness.m_as(u.um):.1f} um {self.material}"
+
+    def srim_data(self, particle: str):
+        """`~cr39py.filtration.srim.SRIMData` object for this layer and given particle.
+
+        Parameters
+        ----------
+
+        particle: str
+            One of the valid particle names, e.g. "proton", "deuteron", "alpha", etc.
+        """
+        key = particle.lower()
+
+        if key not in self._srim_data:
+            self._srim_data[key] = SRIMData.from_strings(particle, self.material)
+        return self._srim_data[key]
+
+    def _range_ion(
+        self,
+        particle: str,
+        E: u.Quantity,
+        dx: u.Quantity = 1 * u.um,
+        max_nsublayers: int | None = None,
+        reverse: bool = False,
+    ) -> u.Quantity:
+        """
+        Calculate the energy a particle will be ranged down to through the layer.
+
+        Used in the ``range_down`` and ``reverse_ranging`` methods below.
+
+        Parameters
+        ----------
+        particles : str
+            Incident particle
+
+        E : u.Quantity
+            If ``reverse`` is ``False``, energy of the particle before ranging in the layer.
+            If ``reverse`` is ``True``, energy of the particle after ranging in the layer.
+
+        dx : u.Quantity, optional
+            The spatial resolution of the numerical integration of the
+            stopping power. Defaults to 1 μm.
+
+        max_nsublayers: int
+            Maximum number of sublayers to allow. If None,
+            all sublayers will be included as determined by dx.
+
+        reverse : bool
+            If True, reverse the process to find the starting energy of
+            a particle given the final energy. Used in `reverse_ion_ranging`
+
+        Returns
+        -------
+
+        E : u.Quantity
+            If ``reverse`` is ``False``, energy of the particle after ranging in the layer.
+            If ``reverse`` is ``True``, energy of the particle before ranging in the layer.
+
+        """
+
+        # TODO: strip units within this calculation to make it faster?
+
+        # Get a cubic splines interpolator for the stopping power
+        # in this layer
+        sp_fcn = self.srim_data(particle).dEdx_total_interpolator
+
+        # Slice the layer into sublayer dx thick
+        nsublayers = int(np.floor(self.thickness.m_as(u.um) / dx.m_as(u.um)))
+        if max_nsublayers is not None and nsublayers > max_nsublayers:
+            nsublayers = max_nsublayers
+            dx = self.thickness / nsublayers
+
+        sublayers = np.ones(nsublayers) * dx.m_as(u.um)
+        # Include any remainder in the last sublayer
+        sublayers[-1] += self.thickness.m_as(u.um) % dx.m_as(u.um)
+
+        # Calculate the energy deposited in each sublayer
+        # This is essentially numerically integrating the stopping power
+        for ds in sublayers:
+            # Interpolate the stopping power at the current energy
+            interpolated_stopping_power = sp_fcn(E.m_as(u.eV)) * u.keV / u.um
+
+            if reverse:
+                interpolated_stopping_power *= -1
+
+            E -= interpolated_stopping_power * (ds * u.um)
+
+            # If energy is at or below zero, return 0.
+            # The particle has stopped.
+            if E <= 0 * E.u:
+                return 0 * E.u
+        return E
+
+    def range_down(
+        self,
+        particle: str,
+        E_in: u.Quantity,
+        dx: u.Quantity = 1 * u.um,
+        max_nsublayers: int | None = None,
+    ) -> u.Quantity:
+        """
+        Calculate the energy a particle will be ranged down to through the layer.
+
+        Parameters
+        ----------
+        particles : str
+            Incident particle
+
+        E_in : u.Quantity
+            Energy of the particle before ranging in the layer.
+
+        dx : u.Quantity, optional
+            The spatial resolution of the numerical integration of the
+            stopping power. Defaults to 1 μm.
+
+        max_nsublayers: int
+            Maximum number of sublayers to allow. If None,
+            all sublayers will be included as determined by dx.
+
+
+
+        Returns
+        -------
+
+        E_out : u.Quantity
+            Energy of the particle after ranging in the layer. If zero, the
+            particle stopped in the stack.
+
+        """
+        return self._range_ion(
+            particle, E_in, dx=dx, max_nsublayers=max_nsublayers, reverse=False
+        )
+
+    def reverse_ranging(
+        self,
+        particle: str,
+        E_out: u.Quantity,
+        dx: u.Quantity = 1 * u.um,
+        max_nsublayers: int | None = None,
+    ) -> u.Quantity:
+        """
+        Calculate the energy a particle would have had before ranging in
+        the layer.
+
+        Parameters
+        ----------
+        particles : str
+            Incident particle
+
+        E_out : u.Quantity
+            Energy of the particle after exiting the layer.
+
+        dx : u.Quantity, optional
+            The spatial resolution of the numerical integration of the
+            stopping power. Defaults to 1 μm.
+
+        max_nsublayers: int
+            Maximum number of sublayers to allow. If None,
+            all sublayers will be included as determined by dx.
+
+
+
+        Returns
+        -------
+
+        E_in: u.Quantity
+            Energy of the particle before ranging in the layer.
+
+        """
+        if E_out.m <= 0:
+            raise ValueError("Cannot reverse ranging if particle stopped in the layer.")
+
+        return self._range_ion(
+            particle, E_out, dx=dx, max_nsublayers=max_nsublayers, reverse=True
+        )
 
 
 @saveable_class()
@@ -151,18 +328,22 @@ class Stack(ExportableClassMixin):
         thickness = np.array([layer.thickness.m_as(u.mm) for layer in self.layers])
         return np.sum(thickness) * u.mm
 
-    def range_down_ion(
-        self, particle, Ep, dx=1 * u.um, max_nsublayers=None, reverse=False
+    def range_down(
+        self,
+        particle,
+        E_in,
+        dx=1 * u.um,
+        max_nsublayers=None,
     ):
         """
-        Calculate the energy a particle will be ranged down to through the stack
+        Calculate the energy a particle will be ranged down to through the stack.
 
         Parameters
         ----------
         particles : Particle
             Incident particle
 
-        Ep : u.Quantity
+        E_in : u.Quantity
             Initial energy of incident particle
 
         dx : u.Quantity, optional
@@ -173,143 +354,84 @@ class Stack(ExportableClassMixin):
             Maximum number of sublayers to allow. If None,
             all sublayers will be included as determined by dx.
 
-        reverse : bool
-            If True, reverse the process to find the starting energy of
-            a particle given the final energy. Used in `reverse_ion_ranging`
+        Returns
+        -------
+
+        E_out : u.Quantity
+            Energy of the particle after leaving the stack. If zero, the
+            particle stopped in the stack.
 
         """
-        if reverse:
-            layers = self.layers[::-1]
-        else:
-            layers = self.layers
+        E = E_in
 
-        for l in layers:
+        for l in self.layers:
 
-            # Get a cubic splines interpolator for the stopping power
-            # in this layer
-            sp_fcn = l.material.ion_stopping_power(particle, return_interpolator=True)
+            E = l.range_down(particle, E, dx=dx, max_nsublayers=max_nsublayers)
 
-            # Slice the layer into sublayer dx thick
-            nsublayers = int(np.floor(l.thickness.m_as(u.um) / dx.m_as(u.um)))
-            if max_nsublayers is not None and nsublayers > max_nsublayers:
-                nsublayers = max_nsublayers
-                dx = l.thickness / nsublayers
+            if E <= 0 * E.u:
+                return 0 * E.u
+        return E
 
-            sublayers = np.ones(nsublayers) * dx.m_as(u.um)
-            # Include any remainder in the last sublayer
-            sublayers[-1] += l.thickness.m_as(u.um) % dx.m_as(u.um)
-
-            # Calculate the energy deposited in each sublayer
-            # This is essentially numerically integrating the stopping power
-            for ds in sublayers:
-                # Interpolate the stopping power at the current energy
-                interpolated_stopping_power = sp_fcn(Ep)
-
-                if reverse:
-                    interpolated_stopping_power *= -1
-
-                Ep -= interpolated_stopping_power * (ds * u.um)
-
-                if Ep < 0 * Ep.u:
-                    return 0 * Ep.u
-        return Ep
-
-    def ion_ranging_energy_loss(self, particle, Ep):
+    def reverse_ranging(
+        self,
+        particle,
+        E_out,
+        dx=1 * u.um,
+        max_nsublayers=None,
+    ):
         """
-        Calculate the energy a particle will lose in the stack
-        """
-        return Ep - self.range_down_ion(particle, Ep)
+        Calculate the energy of a particle before ranging in the stack
+        from its energy after the stack.
 
-    def reverse_ion_ranging(self, particle, Ep, dx=1 * u.um, max_nsublayers=None):
-        """
-        Given the final energy of a particle, calculate the initial energy
-        it would have had prior to ranging through the stack.
-        """
-        return self.range_down_ion(
-            particle, Ep, dx=dx, max_nsublayers=max_nsublayers, reverse=True
-        )
+        Parameters
+        ----------
+        particle: str
+            Incident particle
 
-    def transmitted_xray_spectrum(self, energies, input_spectrum):
-        """
-        Calculate transmitted x-ray spectrum
-        """
-        spectrum = np.copy(input_spectrum)
+        E_out : u.Quantity
+            Energy of the particle after the stack.
 
-        # Get transmitted spectrum
-        for layer in self.layers:
-            mat = layer.material
-            mu = mat.xray_mass_attenuation_coefficent(energies=energies) * mat.density
-            # Apply decrease in intensity over this layer
-            spectrum *= np.exp(-mu * layer.thickness)
+        dx : u.Quantity, optional
+            The spatial resolution of the numerical integration of the
+            stopping power. Defaults to 1 μm.
 
-        return spectrum
+        max_nsublayers: int
+            Maximum number of sublayers to allow. If None,
+            all sublayers will be included as determined by dx.
 
-    def transmitted_xray_band(self, energies, spectrum, threshold=0.90):
+        Returns
+        -------
+
+        E_in : u.Quantity
+            Energy of the particle before entering the stack.
+
         """
-        Calculate the energy range mean and HWHM points through this filter
+        E = E_out
+
+        for l in self.layers[::-1]:
+
+            E = l.reverse_ranging(particle, E, dx=dx, max_nsublayers=max_nsublayers)
+
+        return E
+
+    def ranging_energy_loss(self, particle: str, E_in: u.Quantity) -> u.Quantity:
+        """
+        Calculate the energy a particle will lose in the stack.
 
         Parameters
         ----------
 
-        Threshold: float
-            Percentage of the signal to include as ``in the bounds``.
-            Defaults to 95%
+        particles : str
+            Incident particle
+
+        E_in : u.Quantity
+            Energy of the particle before the stack.
+
+        Returns
+        -------
+
+        E_in_stack : u.Quantity
+            Energy the particle leaves in the stack.
 
         """
-
-        spectrum = self.transmitted_xray_spectrum(energies, spectrum)
-
-        emax = energies[np.argmax(spectrum)]
-
-        # Calculate the cumulative spectrum and locate the 5% and 95%
-        # levels to find the points that bound 95% of the signal
-        ispect = cumulative_trapezoid(spectrum.m, x=energies.m)
-        ispect /= np.max(ispect)
-
-        dthreshold = (1 - threshold) / 2
-        e1 = energies[np.argmin(np.abs(ispect - dthreshold))]
-        e2 = energies[np.argmin(np.abs(ispect - (1 - dthreshold)))]
-
-        return emax, e1, e2
-
-
-@saveable_class()
-class FilterPack(ExportableClassMixin):
-    """
-    A FilterPack contains one or more regions of filtration, each represented
-    by a different Stack of Layers.
-    """
-
-    _exportable_attributes = ["regions"]
-
-    @classmethod
-    def from_stacks(cls, *args):
-        obj = cls()
-
-        # Replace any strings with Stack objects
-        _args = []
-        for arg in args:
-            _arg = Stack.from_string(arg) if isinstance(arg, str) else arg
-            _args.append(_arg)
-
-        obj.regions = list(_args)
-        return obj
-
-    @property
-    def nregions(self):
-        return len(self.regions)
-
-    def __str__(self):
-        s = "FilterPack:\n"
-        for r in self.regions:
-            s += str(r) + "\n"
-        return s
-
-    def __eq__(self, other):
-        if self.nregions != other.nregions:
-            return False
-
-        for i in range(self.nregions):
-            if self.regions[i] != other.regions[i]:
-                return False
-        return True
+        return E_in - self.range_down(particle, E_in)

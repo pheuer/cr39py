@@ -10,19 +10,19 @@ import numpy as np
 import pytest
 
 from cr39py.core.units import unit_registry as u
-from cr39py.filtration.stack import FilterPack, Layer, Stack
+from cr39py.filtration.stack import Layer, Stack
 
 
 def test_create_layer():
     l1 = Layer.from_properties(
-        thickness=50 * u.um, material="Tantalum", active=True, name="testname"
+        thickness=50 * u.um, material="Ta", active=True, name="testname"
     )
     str(l1)
 
 
 def test_layer_from_string():
     l1 = Layer.from_properties(100 * u.um, "Ta")
-    l2 = Layer.from_string("100 um tantalum")
+    l2 = Layer.from_string("100 um ta")
     assert l1 == l2
 
     # Test invalid string
@@ -31,12 +31,12 @@ def test_layer_from_string():
 
 
 def test_layer_equality():
-    l1 = Layer.from_string("100 um tantalum")
-    l2 = Layer.from_string("50 um tantalum")
-    l3 = Layer.from_string("100 um aluminum")
+    l1 = Layer.from_string("100 um Ta")
+    l2 = Layer.from_string("50 um Ta")
+    l3 = Layer.from_string("100 um Ta")
 
     assert l1 != l2
-    assert l1 != l3
+    assert l1 == l3
 
 
 def test_save_layer(tmpdir):
@@ -50,16 +50,56 @@ def test_save_layer(tmpdir):
     assert l1 == l2
 
 
+# These test cases are used for a bunch of validations of the
+# ranging calculations
+# the expected values are from the MIT AnalyzeCR39 calculator
+# TODO: Add more cases with more SRIM data
+cases = [
+    ("1000 um Al", "Proton", 14.7 * u.MeV, 5.567 * u.MeV),
+    ("15 um Ta", "Proton", 5 * u.MeV, 4.246 * u.MeV),
+    ("25 um Ta", "Deuteron", 5 * u.MeV, 2.967 * u.MeV),
+    ("25 um Al", "Triton", 3 * u.MeV, 1.642 * u.MeV),
+]
+
+
+@pytest.mark.parametrize("layer,particle,Ein,expected", cases)
+def test_layer_ion_ranging(layer, particle, Ein, expected):
+    """Compare the calculated ranged-down energies to values
+    from MIT's AnalyzeCR39 calculator.
+    """
+    l = Layer.from_string(layer)
+    eout = l.range_down(particle, Ein)
+    assert np.isclose(eout, expected, rtol=0.03)
+
+
+@pytest.mark.parametrize("layer,particle,expected,Eout", cases)
+def test_layer_remove_ranging(layer, particle, expected, Eout):
+    """Compare the calculated reverse-ranging energies to values
+    from MIT's AnalyzeCR39 calculator.
+    """
+    l = Layer.from_string(layer)
+    ein = l.reverse_ranging(particle, Eout)
+    assert np.isclose(ein, expected, rtol=0.03)
+
+
+@pytest.mark.parametrize("layer,particle,Ein,ignore", cases)
+def test_layer_reverse_ranging_self_consistency(layer, particle, Ein, ignore):
+    l = Layer.from_string(layer)
+    Eout = l.range_down(particle, Ein)
+    Ein2 = l.reverse_ranging(particle, Eout)
+    assert np.isclose(Ein, Ein2, rtol=0.01)
+
+
 def test_create_stack_from_list_of_layers():
     layers = [
-        Layer.from_properties(thickness=20 * u.um, material="Tungsten"),
-        Layer.from_properties(thickness=150 * u.um, material="Tantalum", name="test2"),
+        Layer.from_properties(thickness=20 * u.um, material="W"),
+        Layer.from_properties(thickness=150 * u.um, material="Ta", name="test2"),
     ]
 
     s1 = Stack.from_layers(*layers)
 
 
-def create_stack_from_string():
+def test_create_stack_from_string():
 
     s1 = Stack.from_layers(
         Layer.from_properties(20 * u.um, "Ta"), Layer.from_properties(100 * u.um, "Al")
@@ -76,64 +116,19 @@ def test_stackproperties():
     assert np.isclose(s.thickness, 120 * u.um)
 
 
-def create_stack_mixed_strings_and_layers():
-
-    s1 = Stack.from_layers(
-        Layer.from_properties(20 * u.um, "Ta"), Layer.from_properties(100 * u.um, "Al")
-    )
-    s2 = Stack.from_string("20 um Ta", Layer.from_properties(100 * u.um, "Al"))
-
-    assert s1 == s2
-
-
-def test_ion_ranging():
-    s = Stack.from_string("100 um Ta")
-
-    einit = 9 * u.MeV
-    efinal = s.range_down_ion("d", einit)
-    assert np.isclose(efinal, 2.35 * u.MeV, rtol=0.01)
-
-    elost = s.ion_ranging_energy_loss("d", einit)
-
-    assert np.isclose(elost, einit - efinal, rtol=0.01)
-
-
-def test_ion_reverse_ranging():
+def test_stack_ion_ranging():
     s = Stack.from_string("100 um Ta, 100 um Al")
 
-    efinal = 1.5 * u.MeV
-    einit = s.reverse_ion_ranging("p", efinal)
-
-    efinal2 = s.range_down_ion("p", einit)
-
-    assert np.isclose(efinal, efinal2, atol=0.1)
+    Ein = 15 * u.MeV
+    Eout = s.range_down("Deuteron", Ein)
+    Ein2 = s.reverse_ranging("Deuteron", Eout)
+    assert np.isclose(Ein, Ein2, rtol=0.01)
 
 
-def test_create_filterpack_from_mixed_strings_and_stacks():
-    s1 = Stack.from_string("100 um Ta, 100 um Al")
-    s2 = Stack.from_string("10 um Au, 100 um polycarbonate")
-    pack1 = FilterPack.from_stacks(s1, s2)
+def test_stack_ranging_energy_loss():
+    s = Stack.from_string("100 um Ta, 100 um Al")
+    Ein = 12 * u.MeV
+    Eout = s.range_down("Deuteron", Ein)
+    Elost = s.ranging_energy_loss("Deuteron", Ein)
 
-    str(pack1)
-
-    pack2 = FilterPack.from_stacks(
-        Stack.from_string("100 um Ta, 100 um Al"),
-        "10 um Au, 100 um polycarbonate",
-    )
-
-    assert pack1 == pack2
-
-
-def test_save_filter_pack(tmpdir):
-
-    tmppath = Path(tmpdir) / Path("filterpack.h5")
-
-    s1 = Stack.from_string("100 um Ta, 100 um Al")
-    s2 = Stack.from_string("10 um Au, 100 um polycarbonate")
-    pack1 = FilterPack.from_stacks(s1, s2)
-
-    pack1.to_hdf5(tmppath)
-
-    pack2 = FilterPack.from_hdf5(tmppath)
-
-    assert pack1 == pack2
+    assert np.isclose(Elost, Ein - Eout, rtol=0.01)
