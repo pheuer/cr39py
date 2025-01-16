@@ -24,4 +24,5 @@ CR39 py is a package for analyzing CR39 particle track data.
 
 
    notebooks/applying_cuts_to_a_cpsa_file
+   notebooks/filtration_stacks
    notebooks/nuclear_reaction_data

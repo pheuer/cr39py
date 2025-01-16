@@ -115,7 +115,6 @@ class Layer(ExportableClassMixin):
         particle: str,
         E: u.Quantity,
         dx: u.Quantity = 1 * u.um,
-        max_nsublayers: int | None = None,
         reverse: bool = False,
     ) -> u.Quantity:
         """
@@ -135,10 +134,6 @@ class Layer(ExportableClassMixin):
         dx : u.Quantity, optional
             The spatial resolution of the numerical integration of the
             stopping power. Defaults to 1 μm.
-
-        max_nsublayers: int
-            Maximum number of sublayers to allow. If None,
-            all sublayers will be included as determined by dx.
 
         reverse : bool
             If True, reverse the process to find the starting energy of
@@ -161,10 +156,6 @@ class Layer(ExportableClassMixin):
 
         # Slice the layer into sublayer dx thick
         nsublayers = int(np.floor(self.thickness.m_as(u.um) / dx.m_as(u.um)))
-        if max_nsublayers is not None and nsublayers > max_nsublayers:
-            nsublayers = max_nsublayers
-            dx = self.thickness / nsublayers
-
         sublayers = np.ones(nsublayers) * dx.m_as(u.um)
         # Include any remainder in the last sublayer
         sublayers[-1] += self.thickness.m_as(u.um) % dx.m_as(u.um)
@@ -173,12 +164,26 @@ class Layer(ExportableClassMixin):
         # This is essentially numerically integrating the stopping power
         for ds in sublayers:
             # Interpolate the stopping power at the current energy
-            interpolated_stopping_power = sp_fcn(E.m_as(u.eV)) * u.keV / u.um
+            interpolated_stopping_power = sp_fcn(E.m_as(u.eV))
 
             if reverse:
                 interpolated_stopping_power *= -1
 
-            E -= interpolated_stopping_power * (ds * u.um)
+            dE = interpolated_stopping_power * u.keV / u.um * (ds * u.um)
+
+            # Compute the fractional error in the stopping power across the sublayer
+            # Use this to raise an exception if the numerical integration is too coarse
+            sp_err = (
+                np.abs(sp_fcn((E - dE).m_as(u.eV)) - interpolated_stopping_power)
+                / interpolated_stopping_power
+            )
+            if sp_err > 0.05:
+                print(sp_err)
+                raise ValueError(
+                    "|sp(E-dE)-sp(E)|/sp(E)={sp_err*100:.2f}% exceeds recommended threshold: use a smaller `dx`."
+                )
+
+            E -= dE
 
             # If energy is at or below zero, return 0.
             # The particle has stopped.
@@ -191,7 +196,6 @@ class Layer(ExportableClassMixin):
         particle: str,
         E_in: u.Quantity,
         dx: u.Quantity = 1 * u.um,
-        max_nsublayers: int | None = None,
     ) -> u.Quantity:
         """
         Calculate the energy a particle will be ranged down to through the layer.
@@ -208,12 +212,6 @@ class Layer(ExportableClassMixin):
             The spatial resolution of the numerical integration of the
             stopping power. Defaults to 1 μm.
 
-        max_nsublayers: int
-            Maximum number of sublayers to allow. If None,
-            all sublayers will be included as determined by dx.
-
-
-
         Returns
         -------
 
@@ -222,16 +220,13 @@ class Layer(ExportableClassMixin):
             particle stopped in the stack.
 
         """
-        return self._range_ion(
-            particle, E_in, dx=dx, max_nsublayers=max_nsublayers, reverse=False
-        )
+        return self._range_ion(particle, E_in, dx=dx, reverse=False)
 
     def reverse_ranging(
         self,
         particle: str,
         E_out: u.Quantity,
         dx: u.Quantity = 1 * u.um,
-        max_nsublayers: int | None = None,
     ) -> u.Quantity:
         """
         Calculate the energy a particle would have had before ranging in
@@ -249,11 +244,6 @@ class Layer(ExportableClassMixin):
             The spatial resolution of the numerical integration of the
             stopping power. Defaults to 1 μm.
 
-        max_nsublayers: int
-            Maximum number of sublayers to allow. If None,
-            all sublayers will be included as determined by dx.
-
-
 
         Returns
         -------
@@ -265,9 +255,29 @@ class Layer(ExportableClassMixin):
         if E_out.m <= 0:
             raise ValueError("Cannot reverse ranging if particle stopped in the layer.")
 
-        return self._range_ion(
-            particle, E_out, dx=dx, max_nsublayers=max_nsublayers, reverse=True
-        )
+        return self._range_ion(particle, E_out, dx=dx, reverse=True)
+
+    def ranging_energy_loss(self, particle: str, E_in: u.Quantity) -> u.Quantity:
+        """
+        Calculate the energy a particle will lose in the layer.
+
+        Parameters
+        ----------
+
+        particles : str
+            Incident particle
+
+        E_in : u.Quantity
+            Energy of the particle before the layer.
+
+        Returns
+        -------
+
+        E_in_stack : u.Quantity
+            Energy the particle leaves in the layer.
+
+        """
+        return E_in - self.range_down(particle, E_in)
 
 
 @saveable_class()
@@ -344,7 +354,6 @@ class Stack(ExportableClassMixin):
         particle,
         E_in,
         dx=1 * u.um,
-        max_nsublayers=None,
     ):
         """
         Calculate the energy a particle will be ranged down to through the stack.
@@ -361,10 +370,6 @@ class Stack(ExportableClassMixin):
             The spatial resolution of the numerical integration of the
             stopping power. Defaults to 1 μm.
 
-        max_nsublayers: int
-            Maximum number of sublayers to allow. If None,
-            all sublayers will be included as determined by dx.
-
         Returns
         -------
 
@@ -377,7 +382,7 @@ class Stack(ExportableClassMixin):
 
         for l in self.layers:
 
-            E = l.range_down(particle, E, dx=dx, max_nsublayers=max_nsublayers)
+            E = l.range_down(particle, E, dx=dx)
 
             if E <= 0 * E.u:
                 return 0 * E.u
@@ -406,10 +411,6 @@ class Stack(ExportableClassMixin):
             The spatial resolution of the numerical integration of the
             stopping power. Defaults to 1 μm.
 
-        max_nsublayers: int
-            Maximum number of sublayers to allow. If None,
-            all sublayers will be included as determined by dx.
-
         Returns
         -------
 
@@ -421,11 +422,13 @@ class Stack(ExportableClassMixin):
 
         for l in self.layers[::-1]:
 
-            E = l.reverse_ranging(particle, E, dx=dx, max_nsublayers=max_nsublayers)
+            E = l.reverse_ranging(particle, E, dx=dx)
 
         return E
 
-    def ranging_energy_loss(self, particle: str, E_in: u.Quantity) -> u.Quantity:
+    def ranging_energy_loss(
+        self, particle: str, E_in: u.Quantity, dx=1 * u.um
+    ) -> u.Quantity:
         """
         Calculate the energy a particle will lose in the stack.
 
@@ -438,6 +441,12 @@ class Stack(ExportableClassMixin):
         E_in : u.Quantity
             Energy of the particle before the stack.
 
+
+        dx : u.Quantity
+            The spatial resolution of the numerical integration of the
+            stopping power. Defaults to 1 μm.
+
+
         Returns
         -------
 
@@ -445,4 +454,4 @@ class Stack(ExportableClassMixin):
             Energy the particle leaves in the stack.
 
         """
-        return E_in - self.range_down(particle, E_in)
+        return E_in - self.range_down(particle, E_in, dx=dx)
