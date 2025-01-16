@@ -90,6 +90,18 @@ def test_layer_reverse_ranging_self_consistency(layer, particle, Ein, ignore):
     assert np.isclose(Ein, Ein2, rtol=0.01)
 
 
+def test_particle_stops_when_energy_goes_negative():
+    l = Layer.from_string("1 m Ta")
+    Eout = l.range_down("Proton", 2 * u.MeV, dx=0.1 * u.um)
+    assert Eout.m == 0
+
+
+def test_dx_too_large_in_ranging():
+    l = Layer.from_string("100 um Ta")
+    with pytest.raises(ValueError):
+        l.range_down("Proton", 4 * u.MeV, dx=20 * u.um)
+
+
 def test_create_stack_from_list_of_layers():
     layers = [
         Layer.from_properties(thickness=20 * u.um, material="W"),

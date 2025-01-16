@@ -150,6 +150,14 @@ class Layer(ExportableClassMixin):
 
         # TODO: strip units within this calculation to make it faster?
 
+        # Find the peak of the stopping power curve
+        sp_peak = (
+            self.srim_data(particle).ion_energy[
+                np.argmax(self.srim_data(particle).dEdx_total)
+            ]
+            * u.eV
+        )
+
         # Get a cubic splines interpolator for the stopping power
         # in this layer
         sp_fcn = self.srim_data(particle).dEdx_total_interpolator
@@ -173,15 +181,18 @@ class Layer(ExportableClassMixin):
 
             # Compute the fractional error in the stopping power across the sublayer
             # Use this to raise an exception if the numerical integration is too coarse
-            sp_err = (
-                np.abs(sp_fcn((E - dE).m_as(u.eV)) - interpolated_stopping_power)
-                / interpolated_stopping_power
-            )
-            if sp_err > 0.05:
-                print(sp_err)
-                raise ValueError(
-                    "|sp(E-dE)-sp(E)|/sp(E)={sp_err*100:.2f}% exceeds recommended threshold: use a smaller `dx`."
+            # Only do this calculation above the Bragg peak, because the SP error
+            # is always large when you traverse the Bragg peak
+            if E > sp_peak:
+                sp_err = (
+                    np.abs(sp_fcn((E - dE).m_as(u.eV)) - interpolated_stopping_power)
+                    / interpolated_stopping_power
                 )
+                if sp_err > 0.05:
+                    print(sp_err)
+                    raise ValueError(
+                        "|sp(E-dE)-sp(E)|/sp(E)={sp_err*100:.2f}% exceeds recommended threshold: use a smaller `dx`."
+                    )
 
             E -= dE
 

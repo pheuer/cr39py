@@ -161,7 +161,9 @@ class SRIMData:
             # The first column is the ion energy, along with a unit
             energy, unit = s[0], s[1]
             if unit not in energy_convert.keys():
-                raise ValueError(f"Unrecognized energy unit: {unit}")
+                raise ValueError(
+                    f"Unrecognized energy unit: {unit}"
+                )  # pragma: no cover
             ion_energy.append(float(energy) * energy_convert[unit])
 
             # Read the dEdx electronic and nuclear
@@ -174,17 +176,23 @@ class SRIMData:
             # Read the projected range
             rng, unit = s[4], s[5]
             if unit not in range_convert.keys():
-                raise ValueError(f"Unrecognized range unit: `{unit}`")
+                raise ValueError(
+                    f"Unrecognized range unit: `{unit}`"
+                )  # pragma: no cover
             projected_range.append(float(rng) * range_convert[unit])
 
             rng, unit = s[6], s[7]
             if unit not in range_convert.keys():
-                raise ValueError(f"Unrecognized range unit: `{unit}`")
+                raise ValueError(
+                    f"Unrecognized range unit: `{unit}`"
+                )  # pragma: no cover
             longitudinal_straggling.append(float(rng) * range_convert[unit])
 
             rng, unit = s[8], s[9]
             if unit not in range_convert.keys():
-                raise ValueError(f"Unrecognized range unit: `{unit}`")
+                raise ValueError(
+                    f"Unrecognized range unit: `{unit}`"
+                )  # pragma: no cover
             lateral_straggling.append(float(rng) * range_convert[unit])
 
             # If the next line contains the dotted line at the end of the file,

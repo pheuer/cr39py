@@ -30,7 +30,14 @@ def test_load_srim_from_strings(particle, material, dEdxelectronic0):
     assert np.isclose(srim.dEdx_electronic[0], dEdxelectronic0)
 
 
-def test_srimdata_attributes():
+@pytest.fixture
+def SRIMobj():
+    file = data_dir / Path("srim/Proton in Al.txt")
+    srim = SRIMData.from_file(file)
+    return srim
+
+
+def test_srimdata_attributes(SRIMobj):
     attrs = [
         ("particle", str),
         ("material", str),
@@ -41,10 +48,18 @@ def test_srimdata_attributes():
         ("projected_range", np.ndarray),
         ("longitudinal_straggling", np.ndarray),
         ("lateral_straggling", np.ndarray),
+        ("lateral_straggling", np.ndarray),
     ]
-    file = data_dir / Path("srim/Proton in Al.txt")
-    srim = SRIMData.from_file(file)
 
     for attr, type in attrs:
-        assert hasattr(srim, attr)
-        assert isinstance(getattr(srim, attr), type)
+        assert hasattr(SRIMobj, attr)
+        assert isinstance(getattr(SRIMobj, attr), type)
+
+
+def test_get_srim_interpolators(SRIMobj):
+    interps = ["projected_range_interpolator", "dEdx_total_interpolator"]
+
+    for attr in interps:
+        interp = getattr(SRIMobj, attr)
+        assert callable(interp)
+        assert isinstance(interp(100), float)
