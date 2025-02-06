@@ -221,3 +221,27 @@ def d3hep_yield(
     return (
         DDn_yield * d3he_reactivity / dd_reactivity * He_pressure / (2 * D2_pressure)
     ).m_as(u.dimensionless)
+
+
+def ddp_energy(d3he_energy: float):
+    """
+    Estimates the final energy of a D(D,p) proton given the energy of a 3He(D,p) proton.
+
+    The D(D,p) reaction produces protons with an energy of 3.02 MeV, while the 3He(D,p) reaction produces
+    protons with an energy of 14.64 MeV. However, charging of the capsule causes a shift (generally an up shift)
+    in the particle energy that is somewhat unpredictable. Typically the energy of the 3He(D,p) protons is
+    directly measured using a wedge-range filter.  This function infers the energy of the D(D,p) protons based
+    on this measurement, assuming that the energy upshift is the same for each species.
+
+    Parameters
+    ----------
+    d3he_energy : float
+        The energy of the 3He(D,p) proton on the detector, in MeV.
+
+    Returns
+    -------
+    ddp_energy :float
+        The estimated energy of the D(D,p) proton, in MeV.
+    """
+
+    return d3he_energy - 14.64 + 3.02
