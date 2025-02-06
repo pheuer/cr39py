@@ -50,11 +50,49 @@ class BulkEtchModel:
     def __init__(self, bulk_etch_velocity=63 * u.um / u.hr):
         self._bulk_etch_velocity = bulk_etch_velocity
 
-    def removal(self, time: u.Quantity):
-        return (self._bulk_etch_velocity * time).to(u.um)
+    def removal(self, etch_time: u.Quantity):
+        """
+        Amount (depth) of CR-39 removed in a given time.
 
-    def time_to_remove(self, removal: u.Quantity):
-        return (removal / self._bulk_etch_velocity).to(u.hr)
+        This is the amount removed from a single surface: the piece is etched
+        on both sides, so the total decrease in thickness will be 2x this value.
+
+        Parameters
+        ----------
+
+        etch_time : u.Quantity
+            Etch time
+
+        Returns
+        -------
+        depth : u.Quantity
+            Depth of material to remove
+
+        """
+        return (self._bulk_etch_velocity * etch_time).to(u.um)
+
+    def time_to_remove(self, depth: u.Quantity):
+        """
+        Etch time to remove a given amount of material.
+
+        This is the amount removed from a single surface: the piece is etched
+        on both sides, so the total decrease in thickness will be 2x this value.
+
+        Parameters
+        ----------
+
+        depth : u.Quantity
+            Depth of material to remove
+
+
+        Returns
+        -------
+
+        etch_time : u.Quantity
+            Etch time
+
+        """
+        return (depth / self._bulk_etch_velocity).to(u.hr)
 
 
 class CParameterModel:
