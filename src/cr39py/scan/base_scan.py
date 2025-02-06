@@ -871,6 +871,31 @@ class Scan(ExportableClassMixin):
 
         return x, y, F2
 
+    def track_density(self) -> tuple[np.ndarray]:
+        """Track density in tracks/cm^2 for each bin of the histogram.
+
+        Only includes currently selected tracks.
+
+        Returns
+        -------
+
+        hax  : `~np.ndarray`
+            Horizontal axis
+
+        vax : `~np.ndarray`
+            Vertical axis
+
+        track_density : `~np.ndarray`
+            Histogram of track density for each cell.
+        """
+
+        x, y, ntracks = self.histogram(axes=("X", "Y"))
+
+        cell_area = (self.axes["X"].framesize * self.axes["Y"].framesize).m_as(u.cm**2)
+        track_density = ntracks / cell_area
+
+        return x, y, track_density
+
     # *************************************************************************
     # Track Manipulation
     # *************************************************************************
@@ -895,6 +920,7 @@ class Scan(ExportableClassMixin):
 
         - CHI : The ``chi`` track overlap parameter from Zylstra et al. 2012
         - F2 : The ``F2`` track overlap parameter from Zylstra et al. 2012
+        - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
 
         Parameters
         ----------
@@ -975,6 +1001,8 @@ class Scan(ExportableClassMixin):
             xax, yax, arr = self.chi()
         elif quantity == "F2":
             xax, yax, arr = self.F2()
+        elif quantity == "TRACK DENSITY":
+            xax, yax, arr = self.track_density()
         else:
             xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
 

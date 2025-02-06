@@ -69,6 +69,12 @@ def test_track_energy(cr39scan, statistic):
     cr39scan.track_energy("D", statistic)
 
 
+@pytest.mark.parametrize("attribute", ["chi", "F2", "track_density"])
+def test_access_attributes(cr39scan, attribute):
+    assert hasattr(cr39scan, attribute)
+    getattr(cr39scan, attribute)
+
+
 def test_rotate(cr39scan):
     cr39scan.rotate(45)
 
