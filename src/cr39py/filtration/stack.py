@@ -202,6 +202,26 @@ class Layer(ExportableClassMixin):
                 return 0 * E.u
         return E
 
+    def projected_range(self, particle: str, E_in: u.Quantity) -> u.Quantity:
+        """
+        Calculate the projected range of a particle in the layer.
+
+        Parameters
+        ----------
+        particle : str
+            Incident particle
+
+        E_in : u.Quantity
+            Energy of the particle before ranging in the layer.
+
+        Returns
+        -------
+        R : u.Quantity
+            Projected range of the particle in the layer.
+        """
+        prjrng_interp = self.srim_data(particle).projected_range_interpolator
+        return prjrng_interp(E_in.m_as(u.eV)) * u.m
+
     def range_down(
         self,
         particle: str,

@@ -61,6 +61,8 @@ cases = [
     ("25 um Al", "Triton", 3 * u.MeV, 1.642 * u.MeV),
 ]
 
+# TODO add tests for projected range
+
 
 @pytest.mark.parametrize("layer,particle,Ein,expected", cases)
 def test_layer_ion_ranging(layer, particle, Ein, expected):

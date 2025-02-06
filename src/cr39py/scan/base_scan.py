@@ -839,7 +839,8 @@ class Scan(ExportableClassMixin):
         return x, y, chi
 
     def F2(self) -> tuple[np.ndarray]:
-        """The Zylstra overlap parameter ``F2`` for each cell.
+        """
+        The Zylstra overlap parameter ``F2`` for each cell.
 
         F2 is the fraction of tracks that overlap one other track, and
         is a reasonable approximation of the number of tracks that will
