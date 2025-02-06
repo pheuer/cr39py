@@ -1,8 +1,26 @@
 """
-Detector response functions for CR39
+Detector response functions for CR39.
 
-References:
+CR-39 can be either "bulk etched" to remove material uniformly, or "track etched"
+to develop tracks in the surface. Both etching processes are done in a sodium hydroxide (NaOH) bath.
 
+Bulk Etch
+---------
+Bulk etching is performed in a mixture of 25% 10 normal NaOH and 75% methanol at 55 degrees C. This
+rapidly and uniformly removes surface material. The ``BulkEtchModel`` class provides a simple model
+for the amount of material removed given the bulk etch velocity.
+
+
+Track Etch
+----------
+Track etching is done in a 6 normal (6 g/l) NaOH solution at 80 degrees C. During track etching,
+about 2 um/hr of material is removed uniformly from the surface. The ``CParameterModel`` and
+``TwoParameterModel`` classes provide response functions that can be used to estimate the energy
+of a particle that created a track of a given diameter after a given track etch.
+
+
+References
+----------
 N. Sinenian et al. 2011 RSI 82(10) https://doi.org/10.1063/1.3653549
 B. Lahmann et al. 2020 RSI 91(5) https://doi.org/10.1063/5.0004129
 
@@ -13,7 +31,30 @@ import numpy as np
 
 from cr39py.core.units import unit_registry as u
 
-__all__ = ["CParameterModel", "TwoParameterModel"]
+__all__ = ["BulkEtchModel", "CParameterModel", "TwoParameterModel"]
+
+
+class BulkEtchModel:
+    """
+    A simple fixed-velocity model for bulk etching CR-39.
+
+    Parameters
+    ----------
+
+    bulk_etch_velocity : `~astropy.units.Quantity`
+        The velocity at which material is removed during bulk etching.
+        The default values is 63 um/hr, which is based on measurements
+        at LLE.
+    """
+
+    def __init__(self, bulk_etch_velocity=63 * u.um / u.hr):
+        self._bulk_etch_velocity = bulk_etch_velocity
+
+    def removal(self, time: u.Quantity):
+        return (self._bulk_etch_velocity * time).to(u.um)
+
+    def time_to_remove(self, removal: u.Quantity):
+        return (removal / self._bulk_etch_velocity).to(u.hr)
 
 
 class CParameterModel:
