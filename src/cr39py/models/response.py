@@ -47,7 +47,7 @@ class BulkEtchModel:
         at LLE.
     """
 
-    def __init__(self, bulk_etch_velocity=63 * u.um / u.hr):
+    def __init__(self, bulk_etch_velocity=31.5 * u.um / u.hr):
         self._bulk_etch_velocity = bulk_etch_velocity
 
     def removal(self, etch_time: u.Quantity):
