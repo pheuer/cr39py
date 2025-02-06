@@ -43,6 +43,10 @@ class Axis(ExportableClassMixin):
         be None, in which case the range will be automatically determined
         from the track data.
 
+    parent_scan: `~cr39py.scan.base_scan.Scan`
+        The parent scan object to which this axis belongs. Used to access the
+        ``selected_tracks`` property to calculate the axis.
+
     """
 
     _exportable_attributes = ["ind", "_unit", "_default_range", "framesize"]
@@ -52,6 +56,7 @@ class Axis(ExportableClassMixin):
         ind: int = None,
         unit: u.Quantity = None,
         default_range: tuple[float | None] = (None, None, None),
+        parent_scan: "Scan" = None,
     ) -> None:
 
         if ind is None:
@@ -69,7 +74,7 @@ class Axis(ExportableClassMixin):
         self._framesize = None
 
         # Tracks over which to calculate axes
-        self._tracks = None
+        self._parent_scan = parent_scan
 
     @property
     def ind(self) -> int:
@@ -112,10 +117,11 @@ class Axis(ExportableClassMixin):
         else:
             # Otherwise, determine a framesize that will result in about
             # 20 tracks per frame
-            ntracks = self.tracks.shape[0]
+            tracks = self._parent_scan.selected_tracks
+            ntracks = tracks.shape[0]
             nbins = int(np.clip(np.sqrt(ntracks) / 20, 20, 200))
-            minval = np.min(self.tracks[:, self.ind])
-            maxval = np.max(self.tracks[:, self.ind])
+            minval = np.min(tracks[:, self.ind])
+            maxval = np.max(tracks[:, self.ind])
             framesize = (maxval - minval) / nbins
 
         return framesize * self.unit
@@ -148,23 +154,6 @@ class Axis(ExportableClassMixin):
         self._framesize = framesize
         self._reset_axis()
 
-    @property
-    def tracks(self) -> TrackData:
-        """
-        Tracks associated with this axis.
-
-        Setting this property calls a setter method that resets
-        the framesize and axis using the new tracks. This is done
-        programmatically in Scan every time a new set of
-        tracks is selected.
-        """
-        return self._tracks
-
-    @tracks.setter
-    def tracks(self, tracks: TrackData) -> None:
-        self._tracks = tracks
-        self._reset_default_framesize()
-
     @cached_property
     def axis(self) -> u.Quantity:
         """
@@ -176,15 +165,16 @@ class Axis(ExportableClassMixin):
         axis : u.Quantity
             Axis array
         """
+        tracks = self._parent_scan.selected_tracks
 
         # Calculate a min and max value for the axis
         minval = self.default_range[0]
         if minval is None:
-            minval = np.min(self.tracks[:, self.ind])
+            minval = np.min(tracks[:, self.ind])
 
         maxval = self.default_range[1]
         if maxval is None:
-            maxval = np.max(self.tracks[:, self.ind])
+            maxval = np.max(tracks[:, self.ind])
 
         ax = np.arange(minval, maxval, self.framesize.m_as(self.unit))
 
@@ -200,6 +190,14 @@ class Axis(ExportableClassMixin):
         if hasattr(self, "axis"):
             del self.axis
 
+    def _reset(self):
+        """
+        Reset the axis to be recalculated if the tracks
+        have changed.
+        """
+        self._reset_default_framesize()
+        self._reset_axis()
+
 
 class Scan(ExportableClassMixin):
     """
@@ -214,15 +212,6 @@ class Scan(ExportableClassMixin):
     as a histogram for further data analysis.
     """
 
-    _axes = {
-        "X": Axis(ind=0, unit=u.cm, default_range=(None, None, None)),
-        "Y": Axis(ind=1, unit=u.cm, default_range=(None, None, None)),
-        "D": Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5)),
-        "C": Axis(ind=3, unit=u.dimensionless, default_range=(0, 80, 1)),
-        "E": Axis(ind=4, unit=u.dimensionless, default_range=(0, 50, 1)),
-        "Z": Axis(ind=5, unit=u.um, default_range=(None, None, None)),
-    }
-
     _exportable_attributes = [
         "_tracks",
         "_axes",
@@ -232,6 +221,26 @@ class Scan(ExportableClassMixin):
     ]
 
     def __init__(self) -> None:
+
+        self._axes = {
+            "X": Axis(
+                ind=0, unit=u.cm, default_range=(None, None, None), parent_scan=self
+            ),
+            "Y": Axis(
+                ind=1, unit=u.cm, default_range=(None, None, None), parent_scan=self
+            ),
+            "D": Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5), parent_scan=self),
+            "C": Axis(
+                ind=3, unit=u.dimensionless, default_range=(0, 80, 1), parent_scan=self
+            ),
+            "E": Axis(
+                ind=4, unit=u.dimensionless, default_range=(0, 50, 1), parent_scan=self
+            ),
+            "Z": Axis(
+                ind=5, unit=u.um, default_range=(None, None, None), parent_scan=self
+            ),
+        }
+
         self._current_subset_index = 0
         self._subsets = [Subset()]
 
@@ -308,10 +317,6 @@ class Scan(ExportableClassMixin):
         obj._etch_time = etch_time * u.min
         obj._tracks = tracks
         obj.metadata = metadata
-
-        # Attach the selected tracks object to the axes objects
-        for ax in obj._axes.values():
-            ax.tracks = obj.selected_tracks
 
         return obj
 
@@ -599,6 +604,9 @@ class Scan(ExportableClassMixin):
         """Reset the cached properties associated with _selected_tracks."""
         if hasattr(self, "_selected_tracks"):
             del self._selected_tracks
+
+        for ax in self._axes.values():
+            ax._reset()
 
     @cached_property
     def _selected_tracks(self) -> TrackData:
