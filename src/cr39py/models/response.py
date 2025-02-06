@@ -103,8 +103,12 @@ class CParameterModel:
     is more accurate than the two-parameter model.
     """
 
-    # Not implemented yet
-    pass
+    def __init__(self, c, dmax):
+        self._c = c
+        self._dmax = dmax
+
+    def track_diameter(energy):
+        pass
 
 
 class TwoParameterModel:
