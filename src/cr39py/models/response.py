@@ -104,11 +104,80 @@ class CParameterModel:
     """
 
     def __init__(self, c, dmax):
-        self._c = c
-        self._dmax = dmax
+        self.c = c
+        self.dmax = dmax
 
-    def track_diameter(energy):
-        pass
+    def _scaled_diameter_curve(self, E: np.ndarray) -> np.ndarray:
+        """
+        Eq. B1-B3 of B. Lahmann et al. 2020
+
+        Note
+        ----
+        There is a typo in the Lahmann paper that neglects to specify
+        how to choose between B2 and B3. The correct form is shown below.
+        """
+        alphas = [1, 2, 11.3, 4.8]
+        betas = [0.3, 3.0, 8.0]
+        D = np.zeros(E.shape)
+        for alpha, beta in zip(alphas, betas):
+            D += alpha * np.exp(-(E - 1) / beta)
+
+        # Eq. B2 of Lahmann et al.
+        if self.c <= 1:
+            mask = D <= 20
+            D[mask] = 20 * np.exp(-self.c * np.abs(np.log(D[mask] / 20)))
+            mask = D > 20
+            D[mask] = 40 - 20 * np.exp(-self.c * np.abs(np.log(D[mask] / 20)))
+
+        # Eq. B3 of Lahmann et al.
+        if self.c > 1:
+            mask = D <= 10
+            D[mask] = ((20 - D[mask]) ** 2 / (20 - 2 * D[mask])) * (
+                np.exp(self.c / 2 * np.log(D[mask] ** 2 / (20 - D[mask]) ** 2)) - 1
+            ) + 20
+            mask = D > 10
+            D[mask] = 20 - self.c * (20 - D[mask])
+
+        return D
+
+    @property
+    def _M(self):
+        """
+        A parameter used along with dmax to scale diameters.
+        """
+        # Eq. B6 of Lahmann et al.
+        if self.dmax < 12.5:
+            f = 0
+        elif self.dmax > 20:
+            f = 1
+        else:
+            f = (self.dmax - 12.5) / (20 - 12.5)
+
+        # Eq. B5 of Lahmann et al.
+        M = (
+            (20 - self.dmax)
+            / (20 * self.dmax)
+            * (7 / 10 * (1 - self.dmax / 23) * (1 - f) + f / 4)
+        )
+
+        return M
+
+    def track_diameter(self, energy: np.ndarray):
+
+        D_scaled = self._scaled_diameter_curve(energy)
+
+        # Eq. B4, inverted for D_raw
+        D_raw = self.dmax / (20 / D_scaled + self._M * self.dmax)
+        return D_raw
+
+    def track_energy(self, diameter: np.ndarray):
+
+        # First find the scaled diameter
+        D_scaled = 20 * (diameter / self.dmax) / (1 - self._M * diameter)
+
+        # Create an interpolator to get E(D_scaled)?
+
+        raise NotImplementedError()
 
 
 class TwoParameterModel:
@@ -232,7 +301,7 @@ class TwoParameterModel:
             Particle energy in MeV
 
         desired_diameter : float
-            Desired final track diameter
+            Desired final track diameter in um.
 
         Returns
         -------
