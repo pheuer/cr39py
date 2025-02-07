@@ -14,3 +14,11 @@ python:
 sphinx:
   configuration: docs/source/conf.py
   fail_on_warning: true
+
+# Install the documentation dependencies with pip when building on readthedocs
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
