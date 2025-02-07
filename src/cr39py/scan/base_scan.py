@@ -803,6 +803,7 @@ class Scan(ExportableClassMixin):
 
         return ax0.axis, ax1.axis, arr
 
+    @property
     def chi(self) -> tuple[np.ndarray]:
         """The Zylstra overlap parameter ``chi`` for each cell.
 
@@ -838,6 +839,7 @@ class Scan(ExportableClassMixin):
 
         return x, y, chi
 
+    @property
     def F2(self) -> tuple[np.ndarray]:
         """
         The Zylstra overlap parameter ``F2`` for each cell.
@@ -874,12 +876,13 @@ class Scan(ExportableClassMixin):
 
         """
 
-        x, y, chi = self.chi()
+        x, y, chi = self.chi
 
         F2 = chi * (1 - 2 * chi / 3)
 
         return x, y, F2
 
+    @property
     def track_density(self) -> tuple[np.ndarray]:
         """Track density in tracks/cm^2 for each bin of the histogram.
 
@@ -1007,11 +1010,11 @@ class Scan(ExportableClassMixin):
 
         # Get the requested histogram
         if quantity == "CHI":
-            xax, yax, arr = self.chi()
+            xax, yax, arr = self.chi
         elif quantity == "F2":
-            xax, yax, arr = self.F2()
+            xax, yax, arr = self.F2
         elif quantity == "TRACK DENSITY":
-            xax, yax, arr = self.track_density()
+            xax, yax, arr = self.track_density
         else:
             xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
 
