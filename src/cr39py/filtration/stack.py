@@ -222,6 +222,37 @@ class Layer(ExportableClassMixin):
         prjrng_interp = self.srim_data(particle).projected_range_interpolator
         return prjrng_interp(E_in.m_as(u.eV)) * u.m
 
+    def projected_depth_for_energy(
+        self, particle: str, E_in: u.Quantity, E_at: u.Quantity
+    ) -> u.Quantity:
+        """
+        Calculate the depth in the layer where a particle will have a given energy.
+
+        Parameters
+        ----------
+
+        particle : str
+            Incident particle
+
+        E_in : u.Quantity
+            Energy of the particle before ranging in the layer.
+
+        E_at : u.Quantity
+            Energy of the particle at the depth to be calculated.
+
+        Returns
+        -------
+
+        depth : u.Quantity
+            Depth of the particle into the layer when the desired energy
+            is achieved.
+
+        """
+        prjrng_interp = self.srim_data(particle).projected_range_interpolator
+        total_range = prjrng_interp(E_in.m_as(u.eV))
+        range_at_desired_energy = prjrng_interp(E_at.m_as(u.eV))
+        return (total_range - range_at_desired_energy) * u.m
+
     def range_down(
         self,
         particle: str,
