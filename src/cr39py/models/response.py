@@ -144,6 +144,7 @@ class CParameterModel:
     def _M(self):
         """
         A parameter used along with dmax to scale diameters.
+
         """
         # Eq. B6 of Lahmann et al.
         if self.dmax < 12.5:
