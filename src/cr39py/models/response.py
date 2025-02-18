@@ -112,8 +112,6 @@ class CParameterModel:
     def c(self):
         """
         The C parameter of the model.
-
-        Typically ranges from ~0.5-0.9.
         """
         return self._c
 
@@ -298,7 +296,7 @@ class CParameterModel:
 
         E = interp(D_scaled)
 
-        if np.max(E) > np.max(eaxis):
+        if np.max(E) > np.max(eaxis):  # pragma: no cover
             raise ValueError(
                 "Energy exceeds the maximum of the energy axis for interpolation - increase the maximum energy."
             )

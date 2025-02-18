@@ -57,3 +57,9 @@ def test_cparameter():
     D_scaled = model.D_scaled(D_raw)
     D_raw2 = model.D_raw(D_scaled)
     assert np.isclose(D_raw, D_raw2, rtol=0.05)
+
+
+@pytest.mark.parametrize("c,dmax", [(0.509, 0.84), (1.2, 21), (0.6, 10)])
+def test_cparameter_model_different_values(c, dmax):
+    model = CParameterModel(c, dmax)
+    diameter = model.track_diameter(2)
