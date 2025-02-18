@@ -28,6 +28,7 @@ B. Lahmann et al. 2020 RSI 91(5) https://doi.org/10.1063/5.0004129
 """
 
 import numpy as np
+from scipy.interpolate import interp1d
 
 from cr39py.core.units import unit_registry as u
 
@@ -104,11 +105,53 @@ class CParameterModel:
     """
 
     def __init__(self, c, dmax):
-        self.c = c
-        self.dmax = dmax
+        self._c = c
+        self._dmax = dmax
 
-    def _scaled_diameter_curve(self, E: np.ndarray) -> np.ndarray:
+    @property
+    def c(self):
         """
+        The C parameter of the model.
+
+        Typically ranges from ~0.5-0.9.
+        """
+        return self._c
+
+    @c.setter
+    def c(self, c):
+        self._c = c
+
+    @property
+    def dmax(self):
+        """
+        The Dmax parameter of the model.
+
+        The Dmax parameter is intended to correspond to the maximum real
+        track diameter in the data, but this is not always exactly right. See
+        the discussion in Appendix C of Lahmann et al. 2020.
+        """
+        return self._dmax
+
+    @dmax.setter
+    def dmax(self, dmax):
+        self._dmax = dmax
+
+    def scaled_diameter_curve(self, E: np.ndarray) -> np.ndarray:
+        """
+        Scaled diameter as a function of incident particle energy.
+
+        Parameters
+        ----------
+
+        E : np.ndarray
+            Incident particle energy in MeV.
+
+        Returns
+        -------
+        D : np.ndarray
+            Scaled track diameter.
+
+
         Eq. B1-B3 of B. Lahmann et al. 2020
 
         Note
@@ -118,6 +161,7 @@ class CParameterModel:
         """
         alphas = [1, 2, 11.3, 4.8]
         betas = [0.3, 3.0, 8.0]
+        E = np.atleast_1d(E)
         D = np.zeros(E.shape)
         for alpha, beta in zip(alphas, betas):
             D += alpha * np.exp(-(E - 1) / beta)
@@ -162,22 +206,104 @@ class CParameterModel:
 
         return M
 
+    def D_raw(self, D_scaled: np.ndarray) -> np.ndarray:
+        """
+        Convert's scaled diameter to raw diameters in um.
+
+        Eq. B4 of B. Lahmann et al. 2020, inverted for D_raw.
+
+        Parameters
+        ----------
+        D_scaled : np.ndarray
+            Scaled track diameters.
+
+        Returns
+        -------
+        D_Raw : np.ndarray
+            Raw track diameters, in um.
+        """
+
+        return self.dmax / (20 / D_scaled + self._M * self.dmax)
+
+    def D_scaled(self, D_raw: np.ndarray) -> np.ndarray:
+        """
+        Convert's raw diameters in um to scaled diameters.
+
+        Eq. B4 of B. Lahmann et al. 2020.
+
+        Parameters
+        ----------
+        D_Raw : np.ndarray
+            Raw track diameters, in um.
+
+        Returns
+        -------
+        D_scaled : np.ndarray
+            Scaled track diameters.
+        """
+
+        return 20 * (D_raw / self.dmax) / (1 - self._M * D_raw)
+
     def track_diameter(self, energy: np.ndarray):
+        """
+        Track diameter as a function of incident particle energy.
 
-        D_scaled = self._scaled_diameter_curve(energy)
+        Evaluates Eq. B1-B6 of Lahmann et al. 2020.
 
-        # Eq. B4, inverted for D_raw
-        D_raw = self.dmax / (20 / D_scaled + self._M * self.dmax)
+        Parameters
+        ----------
+        energy : np.ndarray
+            Incident particle energy in MeV.
+
+        Returns
+        -------
+        diameter : np.ndarray
+            Track diameters in um.
+        """
+
+        D_scaled = self.scaled_diameter_curve(energy)
+        D_raw = self.D_raw(D_scaled)
         return D_raw
 
-    def track_energy(self, diameter: np.ndarray):
+    def track_energy(self, diameter: np.ndarray, eaxis=None):
+        """
+        Incident particle energy for a given track diameter.
+
+        Inverts Eq. B1-B6 of Lahmann et al. 2020 by interpolating
+        the scaled diameter curve.
+
+        Parameters
+        ----------
+        diameter : np.ndarray
+            Track diameters in um.
+
+        eaxis : np.ndarray, optional
+            Energy axis for interpolation. If not provided, a default
+            axis of 200 points from 0.1 to 50 MeV is used.
+
+        Returns
+        -------
+        energy : np.ndarray
+            Incident particle energy in MeV.
+        """
+
+        if eaxis is None:
+            eaxis = np.linspace(0.1, 50, 200)
 
         # First find the scaled diameter
-        D_scaled = 20 * (diameter / self.dmax) / (1 - self._M * diameter)
+        D_scaled = self.D_scaled(diameter)
 
-        # Create an interpolator to get E(D_scaled)?
+        DE_curve = self.scaled_diameter_curve(eaxis)
+        interp = interp1d(DE_curve, eaxis, kind="cubic")
 
-        raise NotImplementedError()
+        E = interp(D_scaled)
+
+        if np.max(E) > np.max(eaxis):
+            raise ValueError(
+                "Energy exceeds the maximum of the energy axis for interpolation - increase the maximum energy."
+            )
+
+        return E
 
 
 class TwoParameterModel:
