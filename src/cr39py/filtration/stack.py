@@ -368,6 +368,18 @@ class Stack(ExportableClassMixin):
         obj.layers = list(_args)
         return obj
 
+    def add_layer(self, layer: Layer | str):
+        """Appends a layer to the stack.
+
+        Parameters
+        ----------
+        layer : Layer | str
+            Layer to add. If a string, it will be converted to a Layer object.
+        """
+        if isinstance(layer, str):
+            layer = Layer.from_string(layer)
+        self.layers.append(layer)
+
     @classmethod
     def from_string(cls, s):
         """
