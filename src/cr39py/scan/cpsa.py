@@ -272,6 +272,7 @@ def extract_etch_time(path: Path) -> float:
         returns None.
 
     """
+    path = Path(path)
 
     # Cast the filename as lowercase, so "H" and "h" will both match
     filename = str(path.name).lower()

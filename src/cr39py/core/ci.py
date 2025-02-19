@@ -6,7 +6,7 @@ from matplotlib import get_backend
 from matplotlib import use as matplotlib_use
 
 
-def in_ci():
+def in_ci():  # pragma: no cover
     """
     GitLab CI sets the variable CI == 'true' on all pipelines,
     so the presence and value of this environment variable can be used
@@ -15,7 +15,7 @@ def in_ci():
     return "CI" in os.environ and os.environ["CI"] == "true"
 
 
-def in_unit_test():
+def in_unit_test():  # pragma: no cover
     """
     Pytest sets this environment variable
     """
@@ -23,7 +23,7 @@ def in_unit_test():
     return "PYTEST_CURRENT_TEST" in os.environ
 
 
-class SilentPlotting:
+class SilentPlotting:  # pragma: no cover
     """
     Context manager that allows matplotlib to create plots silently
     to ensure plotting functions run without actually having all the plots

@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def goal_diameter(fluence, desired_F2=0.05, max_goal=10):
+def goal_diameter(fluence, desired_F2=0.025, max_goal=10):
     """Calculates the ideal track diameter in um to achieve a given overlap parameter F2.
 
     Parameters
@@ -13,8 +13,8 @@ def goal_diameter(fluence, desired_F2=0.05, max_goal=10):
 
     desired_F2 : float, optional
         The desired track overlap parameter F2. The default
-        value is 0.05, meaning that ~5% of tracks will suffer overlap with
-        a neighbor.
+        value is 0.025, meaning that ~2.5% of tracks will suffer overlap with
+        a neighbor. The model breaks down for F2~>0.3.
 
     max_goal : float, optional
         A maximum at which the goal track diameter will be clipped, in um.
@@ -24,6 +24,13 @@ def goal_diameter(fluence, desired_F2=0.05, max_goal=10):
     -------
     goal_diameter: float
         The goal track diameter in um.
+
+
+    Raises
+    ------
+    ValueError
+        If desired_F2 > 0.3, in which case the model breaks down.
+
     """
 
     def chi(F2):

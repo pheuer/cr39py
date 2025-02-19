@@ -234,6 +234,9 @@ class Cut(ExportableClassMixin):
         """
         Returns a boolean array representing which tracks fall within this cut.
 
+        Note that the mask returned by this function is tracks that are inside
+        the cut, e.g. tracks that should be excluded by the cut.
+
         Parameters
         ----------
         trackdata : np.ndarray (ntracks, 6)
@@ -241,21 +244,21 @@ class Cut(ExportableClassMixin):
 
         Returns
         -------
-        keep : np.ndarray, bool (ntracks,)
+        in_cut : np.ndarray, bool (ntracks,)
             A boolean array indicating whether or not each track in the
             trackdata array fits within the cut.
 
         """
         ntracks, _ = trackdata.shape
-        keep = np.ones(ntracks).astype("bool")
+        in_cut = np.ones(ntracks).astype("bool")
 
         for key in self.bounds.keys():
             if self.bounds[key] is not None:
                 i = self.indices[key]
                 if "min" in key:
-                    keep *= np.greater(trackdata[:, i], getattr(self, key))
+                    in_cut *= np.greater(trackdata[:, i], getattr(self, key))
                 else:
-                    keep *= np.less(trackdata[:, i], getattr(self, key))
+                    in_cut *= np.less(trackdata[:, i], getattr(self, key))
 
         # Return a 1 for every track that is in the cut
-        return keep.astype(bool)
+        return in_cut.astype(bool)

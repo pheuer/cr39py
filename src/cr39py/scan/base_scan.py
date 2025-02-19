@@ -59,10 +59,10 @@ class Axis(ExportableClassMixin):
         parent_scan: "Scan" = None,
     ) -> None:
 
-        if ind is None:
+        if ind is None:  # pragma: no cover
             raise ValueError("ind argument is required")
 
-        if unit is None:
+        if unit is None:  # pragma: no cover
             raise ValueError("unit argument is required")
 
         # These parameters are intended to not be mutable
@@ -249,6 +249,8 @@ class Scan(ExportableClassMixin):
         # Etch time, u.Quantity
         self._etch_time = None
 
+        self._filepath = None
+
         self.metadata = {}
 
     @property
@@ -277,6 +279,16 @@ class Scan(ExportableClassMixin):
             Etch time
         """
         return self._etch_time
+
+    @property
+    def filepath(self) -> Path:
+        """
+        Path to the file from which the scan was loaded.
+
+        If the scan was not loaded from a file, e.g. if it was
+        created directly from a track array, this will be ``None``.
+        """
+        return self._filepath
 
     @property
     def axes(self) -> dict[Axis]:
@@ -350,7 +362,10 @@ class Scan(ExportableClassMixin):
 
         tracks, metadata = read_cpsa(path)
 
-        return cls.from_tracks(tracks, etch_time, metadata=metadata)
+        obj = cls.from_tracks(tracks, etch_time, metadata=metadata)
+        obj._filepath = path
+
+        return obj
 
     # **********************************
     # Framesize setup
@@ -943,6 +958,16 @@ class Scan(ExportableClassMixin):
 
         elif ext.lower() == ".csv":
             np.savetxt(path, arr.m, delimiter=",")
+
+        elif ext.lower() == ".png":
+            fig, ax = plt.subplots()
+            ax.set_aspect("equal")
+            if self.filepath is not None:
+                ax.set_title(self.filepath.stem, fontsize=9)
+            ax.pcolormesh(hax.m, vax.m, arr.m.T)
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            fig.savefig(path, dpi=200)
 
         else:
             raise ValueError(f"Unsupported file extension: {ext}")
