@@ -89,15 +89,12 @@ def test_plot(cr39scan):
         cr39scan.cutplot()
 
 
-@pytest.mark.parametrize("ext", [".csv", ".h5"])
+@pytest.mark.parametrize("ext", [".csv", ".h5", ".png"])
 def test_save_histogram(cr39scan, tmp_path, ext):
 
     # Save the histogram
     path = tmp_path / Path("test_histogram" + ext)
     cr39scan.save_histogram(path)
-
-    # Get the histogram for reference
-    _, _, hist = cr39scan.histogram()
 
     # Read the data from the histogram
     if ext == ".h5":
@@ -106,6 +103,13 @@ def test_save_histogram(cr39scan, tmp_path, ext):
             data = f["data"][...]
     elif ext == ".csv":
         data = np.loadtxt(path, delimiter=",")
+
+    elif ext == ".png":
+        # Skip the check on the data in this case
+        return
+
+    # Get the histogram for reference
+    _, _, hist = cr39scan.histogram()
 
     # Test that the data matches expectations
     assert np.allclose(data, hist, rtol=0.05)
