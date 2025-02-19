@@ -18,8 +18,6 @@ from cr39py.core.exportable_class import ExportableClassMixin
 from cr39py.core.types import TrackData
 from cr39py.scan.cut import Cut
 
-# TODO: Eliminate the domain? Why not just have that be another cut in the cut list...
-
 
 class Subset(ExportableClassMixin):
     """
@@ -27,6 +25,9 @@ class Subset(ExportableClassMixin):
 
     The subset is defined by a domain, a list
     of cuts, and a number of diameter slices (Dslices).
+
+    The domain is a cut that defines the area in parameter space that the subset. Unlike regular cuts,
+    the domain is inclusive, and the ``apply_cuts`` method will not invert the domain when it inverts other cuts.
 
     Parameters
     ----------
@@ -134,10 +135,7 @@ class Subset(ExportableClassMixin):
             domain.
 
         """
-
-        if len(args) < 1 or args[0] is None:
-            self.domain = Cut()
-        elif len(args) == 1:
+        if len(args) == 1 and isinstance(args[0], Cut):
             c = args[0]
         else:
             c = Cut(**kwargs)
@@ -248,14 +246,19 @@ class Subset(ExportableClassMixin):
         i : int
             Index of the cut to remove
 
+        Raises
+        ------
+
+        ValueError
+            If the index is out of bounds.
+
         """
 
         if i > len(self.cuts) - 1:
-            print(
+            raise ValueError(
                 f"Cannot remove the {i} cut, there are only " f"{len(self.cuts)} cuts."
             )
-        else:
-            self.cuts.pop(i)
+        self.cuts.pop(i)
 
     def replace_cut(self, i: int, cut: Cut):
         """Replace the ith cut in the Subset list with a new cut
@@ -266,13 +269,19 @@ class Subset(ExportableClassMixin):
             Index of the Cut to replace.
         cut : `~cr39py.cut.Cut`
             New cut to insert.
+
+        Raises
+        ------
+
+        ValueError
+            If the index is out of bounds.
+
         """
         if i > len(self.cuts) - 1:
-            print(
+            raise ValueError(
                 f"Cannot replace the {i} cut, there are only " f"{len(self.cuts)} cuts."
             )
-        else:
-            self.cuts[i] = cut
+        self.cuts[i] = cut
 
     def apply_cuts(
         self, tracks: TrackData, use_cuts: list[int] | None = None, invert: bool = False
@@ -292,8 +301,8 @@ class Subset(ExportableClassMixin):
 
         invert : bool (optional)
             If True, return the inverse of the cuts selected, i.e. the
-            tracks that would otherwise be excluded. The default is
-            False.
+            tracks that would otherwise be excluded. The domain will not be inerted.
+            The default is False.
 
         Returns
         -------
@@ -331,16 +340,15 @@ class Subset(ExportableClassMixin):
                 # in the excluded region
                 include *= np.logical_not(x)
 
-        # Regardless of anything else, only show tracks that are within
-        # the domain
         if self.domain is not None:
-            include *= self.domain.test(tracks)
+            domain_include = self.domain.test(tracks)
 
-        # Select only these tracks
+        # Select only these these tracks
+        # If inverting, do not invert the domain tracks
         if invert:
-            selected_tracks = tracks[~include, :]
+            selected_tracks = tracks[(~include) * domain_include, :]
         else:
-            selected_tracks = tracks[include, :]
+            selected_tracks = tracks[include * domain_include, :]
 
         # Calculate the bin edges for each dslice
         # !! note that the tracks are already sorted into order by diameter
