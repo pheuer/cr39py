@@ -803,6 +803,7 @@ class Scan(ExportableClassMixin):
 
         return ax0.axis, ax1.axis, arr
 
+    @property
     def chi(self) -> tuple[np.ndarray]:
         """The Zylstra overlap parameter ``chi`` for each cell.
 
@@ -838,6 +839,7 @@ class Scan(ExportableClassMixin):
 
         return x, y, chi
 
+    @property
     def F2(self) -> tuple[np.ndarray]:
         """
         The Zylstra overlap parameter ``F2`` for each cell.
@@ -874,12 +876,13 @@ class Scan(ExportableClassMixin):
 
         """
 
-        x, y, chi = self.chi()
+        x, y, chi = self.chi
 
         F2 = chi * (1 - 2 * chi / 3)
 
         return x, y, F2
 
+    @property
     def track_density(self) -> tuple[np.ndarray]:
         """Track density in tracks/cm^2 for each bin of the histogram.
 
@@ -904,6 +907,45 @@ class Scan(ExportableClassMixin):
         track_density = ntracks / cell_area
 
         return x, y, track_density
+
+    def save_histogram(self, path: Path, *args, **kwargs) -> None:
+        """
+        Save a track histogram to a file.
+
+        The file extension will be used to determine the save format. Supported formats are
+        - .h5,.hdf5 : HDF5 file
+        - .csv : CSV file
+
+        The HDF5 interface will also include the axes and some metadata, but the CSV interface
+        will only save the histogram 2D array.
+
+        Parameters
+        ----------
+        path : `~pathlib.Path`
+            Path to save the histogram to.
+
+        *args, **kwargs
+            Additional arguments to pass to the histogram method.
+        """
+
+        hax, vax, arr = self.histogram(*args, **kwargs)
+
+        ext = path.suffix
+
+        if ext.lower() in [".h5", ".hdf5"]:
+            with h5py.File(path, "w") as f:
+                f["x"] = hax.m
+                f["x"].attrs["unit"] = str(hax.u)
+                f["y"] = vax.m
+                f["y"].attrs["unit"] = str(vax.u)
+                f["data"] = arr.m
+                f["data"].attrs["unit"] = str(arr.u)
+
+        elif ext.lower() == ".csv":
+            np.savetxt(path, arr.m, delimiter=",")
+
+        else:
+            raise ValueError(f"Unsupported file extension: {ext}")
 
     # *************************************************************************
     # Track Manipulation
@@ -1007,11 +1049,11 @@ class Scan(ExportableClassMixin):
 
         # Get the requested histogram
         if quantity == "CHI":
-            xax, yax, arr = self.chi()
+            xax, yax, arr = self.chi
         elif quantity == "F2":
-            xax, yax, arr = self.F2()
+            xax, yax, arr = self.F2
         elif quantity == "TRACK DENSITY":
-            xax, yax, arr = self.track_density()
+            xax, yax, arr = self.track_density
         else:
             xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
 

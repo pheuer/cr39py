@@ -1,8 +1,26 @@
 """
-Detector response functions for CR39
+Detector response functions for CR39.
 
-References:
+CR-39 can be either "bulk etched" to remove material uniformly, or "track etched"
+to develop tracks in the surface. Both etching processes are done in a sodium hydroxide (NaOH) bath.
 
+Bulk Etch
+---------
+Bulk etching is performed in a mixture of 25% 10 normal NaOH and 75% methanol at 55 degrees C. This
+rapidly and uniformly removes surface material. The ``BulkEtchModel`` class provides a simple model
+for the amount of material removed given the bulk etch velocity.
+
+
+Track Etch
+----------
+Track etching is done in a 6 normal (6 g/l) NaOH solution at 80 degrees C. During track etching,
+about 2 um/hr of material is removed uniformly from the surface. The ``CParameterModel`` and
+``TwoParameterModel`` classes provide response functions that can be used to estimate the energy
+of a particle that created a track of a given diameter after a given track etch.
+
+
+References
+----------
 N. Sinenian et al. 2011 RSI 82(10) https://doi.org/10.1063/1.3653549
 B. Lahmann et al. 2020 RSI 91(5) https://doi.org/10.1063/5.0004129
 
@@ -10,10 +28,72 @@ B. Lahmann et al. 2020 RSI 91(5) https://doi.org/10.1063/5.0004129
 """
 
 import numpy as np
+from scipy.interpolate import interp1d
 
 from cr39py.core.units import unit_registry as u
 
-__all__ = ["CParameterModel", "TwoParameterModel"]
+__all__ = ["BulkEtchModel", "CParameterModel", "TwoParameterModel"]
+
+
+class BulkEtchModel:
+    """
+    A simple fixed-velocity model for bulk etching CR-39.
+
+    Parameters
+    ----------
+
+    bulk_etch_velocity : `~astropy.units.Quantity`
+        The velocity at which material is removed during bulk etching.
+        The default values is 63 um/hr, which is based on measurements
+        at LLE.
+    """
+
+    def __init__(self, bulk_etch_velocity=31.5 * u.um / u.hr):
+        self._bulk_etch_velocity = bulk_etch_velocity
+
+    def removal(self, etch_time: u.Quantity):
+        """
+        Amount (depth) of CR-39 removed in a given time.
+
+        This is the amount removed from a single surface: the piece is etched
+        on both sides, so the total decrease in thickness will be 2x this value.
+
+        Parameters
+        ----------
+
+        etch_time : u.Quantity
+            Etch time
+
+        Returns
+        -------
+        depth : u.Quantity
+            Depth of material to remove
+
+        """
+        return (self._bulk_etch_velocity * etch_time).to(u.um)
+
+    def time_to_remove(self, depth: u.Quantity):
+        """
+        Etch time to remove a given amount of material.
+
+        This is the amount removed from a single surface: the piece is etched
+        on both sides, so the total decrease in thickness will be 2x this value.
+
+        Parameters
+        ----------
+
+        depth : u.Quantity
+            Depth of material to remove
+
+
+        Returns
+        -------
+
+        etch_time : u.Quantity
+            Etch time
+
+        """
+        return (depth / self._bulk_etch_velocity).to(u.hr)
 
 
 class CParameterModel:
@@ -24,8 +104,204 @@ class CParameterModel:
     is more accurate than the two-parameter model.
     """
 
-    # Not implemented yet
-    pass
+    def __init__(self, c, dmax):
+        self._c = c
+        self._dmax = dmax
+
+    @property
+    def c(self):
+        """
+        The C parameter of the model.
+        """
+        return self._c
+
+    @c.setter
+    def c(self, c):
+        self._c = c
+
+    @property
+    def dmax(self):
+        """
+        The Dmax parameter of the model.
+
+        The Dmax parameter is intended to correspond to the maximum real
+        track diameter in the data, but this is not always exactly right. See
+        the discussion in Appendix C of Lahmann et al. 2020.
+        """
+        return self._dmax
+
+    @dmax.setter
+    def dmax(self, dmax):
+        self._dmax = dmax
+
+    def scaled_diameter_curve(self, E: np.ndarray) -> np.ndarray:
+        """
+        Scaled diameter as a function of incident particle energy.
+
+        Parameters
+        ----------
+
+        E : np.ndarray
+            Incident particle energy in MeV.
+
+        Returns
+        -------
+        D : np.ndarray
+            Scaled track diameter.
+
+
+        Eq. B1-B3 of B. Lahmann et al. 2020
+
+        Note
+        ----
+        There is a typo in the Lahmann paper that neglects to specify
+        how to choose between B2 and B3. The correct form is shown below.
+        """
+        alphas = [1, 2, 11.3, 4.8]
+        betas = [0.3, 3.0, 8.0]
+        E = np.atleast_1d(E)
+        D = np.zeros(E.shape)
+        for alpha, beta in zip(alphas, betas):
+            D += alpha * np.exp(-(E - 1) / beta)
+
+        # Eq. B2 of Lahmann et al.
+        if self.c <= 1:
+            mask = D <= 20
+            D[mask] = 20 * np.exp(-self.c * np.abs(np.log(D[mask] / 20)))
+            mask = D > 20
+            D[mask] = 40 - 20 * np.exp(-self.c * np.abs(np.log(D[mask] / 20)))
+
+        # Eq. B3 of Lahmann et al.
+        if self.c > 1:
+            mask = D <= 10
+            D[mask] = ((20 - D[mask]) ** 2 / (20 - 2 * D[mask])) * (
+                np.exp(self.c / 2 * np.log(D[mask] ** 2 / (20 - D[mask]) ** 2)) - 1
+            ) + 20
+            mask = D > 10
+            D[mask] = 20 - self.c * (20 - D[mask])
+
+        return D
+
+    @property
+    def _M(self):
+        """
+        A parameter used along with dmax to scale diameters.
+        """
+        # Eq. B6 of Lahmann et al.
+        if self.dmax < 12.5:
+            f = 0
+        elif self.dmax > 20:
+            f = 1
+        else:
+            f = (self.dmax - 12.5) / (20 - 12.5)
+
+        # Eq. B5 of Lahmann et al.
+        M = (
+            (20 - self.dmax)
+            / (20 * self.dmax)
+            * (7 / 10 * (1 - self.dmax / 23) * (1 - f) + f / 4)
+        )
+
+        return M
+
+    def D_raw(self, D_scaled: np.ndarray) -> np.ndarray:
+        """
+        Convert's scaled diameter to raw diameters in um.
+
+        Eq. B4 of B. Lahmann et al. 2020, inverted for D_raw.
+
+        Parameters
+        ----------
+        D_scaled : np.ndarray
+            Scaled track diameters.
+
+        Returns
+        -------
+        D_Raw : np.ndarray
+            Raw track diameters, in um.
+        """
+
+        return self.dmax / (20 / D_scaled + self._M * self.dmax)
+
+    def D_scaled(self, D_raw: np.ndarray) -> np.ndarray:
+        """
+        Convert's raw diameters in um to scaled diameters.
+
+        Eq. B4 of B. Lahmann et al. 2020.
+
+        Parameters
+        ----------
+        D_Raw : np.ndarray
+            Raw track diameters, in um.
+
+        Returns
+        -------
+        D_scaled : np.ndarray
+            Scaled track diameters.
+        """
+
+        return 20 * (D_raw / self.dmax) / (1 - self._M * D_raw)
+
+    def track_diameter(self, energy: np.ndarray):
+        """
+        Track diameter as a function of incident particle energy.
+
+        Evaluates Eq. B1-B6 of Lahmann et al. 2020.
+
+        Parameters
+        ----------
+        energy : np.ndarray
+            Incident particle energy in MeV.
+
+        Returns
+        -------
+        diameter : np.ndarray
+            Track diameters in um.
+        """
+
+        D_scaled = self.scaled_diameter_curve(energy)
+        D_raw = self.D_raw(D_scaled)
+        return D_raw
+
+    def track_energy(self, diameter: np.ndarray, eaxis=None):
+        """
+        Incident particle energy for a given track diameter.
+
+        Inverts Eq. B1-B6 of Lahmann et al. 2020 by interpolating
+        the scaled diameter curve.
+
+        Parameters
+        ----------
+        diameter : np.ndarray
+            Track diameters in um.
+
+        eaxis : np.ndarray, optional
+            Energy axis for interpolation. If not provided, a default
+            axis of 200 points from 0.1 to 50 MeV is used.
+
+        Returns
+        -------
+        energy : np.ndarray
+            Incident particle energy in MeV.
+        """
+
+        if eaxis is None:
+            eaxis = np.linspace(0.1, 50, 200)
+
+        # First find the scaled diameter
+        D_scaled = self.D_scaled(diameter)
+
+        DE_curve = self.scaled_diameter_curve(eaxis)
+        interp = interp1d(DE_curve, eaxis, kind="cubic")
+
+        E = interp(D_scaled)
+
+        if np.max(E) > np.max(eaxis):  # pragma: no cover
+            raise ValueError(
+                "Energy exceeds the maximum of the energy axis for interpolation - increase the maximum energy."
+            )
+
+        return E
 
 
 class TwoParameterModel:
@@ -149,7 +425,7 @@ class TwoParameterModel:
             Particle energy in MeV
 
         desired_diameter : float
-            Desired final track diameter
+            Desired final track diameter in um.
 
         Returns
         -------

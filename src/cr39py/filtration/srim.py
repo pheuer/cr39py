@@ -15,6 +15,34 @@ from cr39py.core.data import data_dir
 
 
 class SRIMData:
+    """
+    Represents an output file from the `SRIM <http://www.srim.org/>`_ code.
+
+
+    Definitions
+    -----------
+    In SRIM, particles have initial velocities parallel to the x-axis, and
+    the y and z axes are parallel to the target surface. If the total number
+    of particles is denoted :math:`N` and :math:`(x_i,y_i,z_i)` is the final position of the deposited ion, then
+
+
+    .. math::
+        \\text{Projected (logitudinal) Range} = R_p = \sum_i x_i / N = \langle x \\rangle
+
+    .. math::
+        \\text{Radial Range} = R_r = \sum_i \sqrt{y_i^2 + z_i^2} / N
+
+    .. math::
+        \\text{Longitudinal Straggle}  = \sigma = \sqrt{\sum_i x_i^2/N - R_p^2} = \sqrt{ \langle (\Delta x_i)^2 \\rangle }
+
+    .. math::
+        \\text{Radial Straggle}  = \sigma_r = \sqrt{\sum_i (y_i^2 + z_i^2)/N - R_r^2} = \sqrt{ \langle (\Delta r_i)^2 \\rangle }
+
+    .. math::
+        \\text{Lateral Straggle}  = \sigma_y = \\bigg ( \sum_i (  [(|y_i| + |z_i|)/2]^2 /N \\bigg )^{1/2}
+
+    These definitions are taken from the SRIM/TRIM user manual.
+    """
 
     @classmethod
     def from_file(cls, file: Path | str) -> None:
@@ -125,8 +153,8 @@ class SRIMData:
         dEdx_electronic = []
         dEdx_nuclear = []
         projected_range = []
-        longitudinal_straggling = []
-        lateral_straggling = []
+        longitudinal_straggle = []
+        lateral_straggle = []
 
         with open(file, "r") as f:
             # Read in the file contents
@@ -186,14 +214,14 @@ class SRIMData:
                 raise ValueError(
                     f"Unrecognized range unit: `{unit}`"
                 )  # pragma: no cover
-            longitudinal_straggling.append(float(rng) * range_convert[unit])
+            longitudinal_straggle.append(float(rng) * range_convert[unit])
 
             rng, unit = s[8], s[9]
             if unit not in range_convert.keys():
                 raise ValueError(
                     f"Unrecognized range unit: `{unit}`"
                 )  # pragma: no cover
-            lateral_straggling.append(float(rng) * range_convert[unit])
+            lateral_straggle.append(float(rng) * range_convert[unit])
 
             # If the next line contains the dotted line at the end of the file,
             # terminate the loop
@@ -208,8 +236,8 @@ class SRIMData:
         self._dEdx_nuclear = np.array(dEdx_nuclear)
         self._dEdx_total = self.dEdx_electronic + self.dEdx_nuclear
         self._projected_range = np.array(projected_range)
-        self._longitudinal_straggling = np.array(longitudinal_straggling)
-        self._lateral_straggling = np.array(lateral_straggling)
+        self._longitudinal_straggle = np.array(longitudinal_straggle)
+        self._lateral_straggle = np.array(lateral_straggle)
 
     @property
     def ion_energy(self) -> np.ndarray:
@@ -240,45 +268,6 @@ class SRIMData:
         return self._dEdx_total
 
     @property
-    def projected_range(self) -> np.ndarray:
-        """
-        Projected range in m.
-        """
-        return self._projected_range
-
-    @property
-    def longitudinal_straggling(self) -> np.ndarray:
-        """
-        Longitudinal straggling in m.
-        """
-        return self._longitudinal_straggling
-
-    @property
-    def lateral_straggling(self) -> np.ndarray:
-        """
-        Lateral straggling in m.
-        """
-        return self._lateral_straggling
-
-    @property
-    def projected_range_interpolator(self) -> callable:
-        """A cubic spline interpolator for the projected range data.
-
-        Returns
-        -------
-
-        interp_fcn : callable
-            Takes an ion energy value in eV and returns the projected
-            range at that energy in meters.
-        """
-
-        # Uses log-log scale fed into a cubic spline.
-        cs = CubicSpline(x=np.log(self.ion_energy), y=np.log(self.projected_range))
-        interp_fcn = lambda e: np.exp(cs(np.log(e)))
-
-        return interp_fcn
-
-    @property
     def dEdx_total_interpolator(self) -> callable:
         """A cubic spline interpolator for the total stopping power data.
 
@@ -293,4 +282,68 @@ class SRIMData:
         cs = CubicSpline(x=np.log(self.ion_energy), y=np.log(self.dEdx_total))
         interp_fcn = lambda e: np.exp(cs(np.log(e)))
 
+        return interp_fcn
+
+    @property
+    def projected_range(self) -> np.ndarray:
+        """
+        Projected range in m.
+        """
+        return self._projected_range
+
+    @property
+    def projected_range_interpolator(self) -> callable:
+        """A cubic spline interpolator for the projected range data.
+
+        Returns
+        -------
+
+        interp_fcn : callable
+            Takes an ion energy value in eV and returns the projected
+            range at that energy in meters.
+        """
+
+        interp_fcn = CubicSpline(x=self.ion_energy, y=self.projected_range)
+        return interp_fcn
+
+    @property
+    def longitudinal_straggle(self) -> np.ndarray:
+        """
+        Longitudinal straggle in m.
+        """
+        return self._longitudinal_straggle
+
+    @property
+    def longitudinal_straggle_interpolator(self) -> callable:
+        """A cubic spline interpolator for the longitudinal (parallel to the incident particle velocity)
+        straggle data.
+
+        Returns
+        -------
+
+        interp_fcn : callable
+            Takes an ion energy value in eV and returns the expected longitudinal stragle at that energy in meters.
+        """
+        interp_fcn = CubicSpline(x=self.ion_energy, y=self.longitudinal_straggle)
+        return interp_fcn
+
+    @property
+    def lateral_straggle(self) -> np.ndarray:
+        """
+        Lateral straggle in m.
+        """
+        return self._lateral_straggle
+
+    @property
+    def lateral_straggle_interpolator(self) -> callable:
+        """A cubic spline interpolator for the lateral (perpendicular to the incident particle velocity)
+        straggle data.
+
+        Returns
+        -------
+
+        interp_fcn : callable
+            Takes an ion energy value in eV and returns the expected lateral stragle at that energy in meters.
+        """
+        interp_fcn = CubicSpline(x=self.ion_energy, y=self.lateral_straggle)
         return interp_fcn

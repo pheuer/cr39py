@@ -5,6 +5,7 @@ from cr39py.core.units import u
 from cr39py.models.fusion import (
     cross_section,
     d3hep_yield,
+    ddp_energy,
     reactions,
     reactivity,
     reduced_mass,
@@ -77,3 +78,7 @@ def test_reactivity_single_values(reaction, tion, expected):
 def test_d3hep_yield():
     y = d3hep_yield(1e8, 6.5, 13, 11 * u.keV) * 1e-7
     assert np.isclose(y, 4.48, rtol=0.05)
+
+
+def test_ddp_energy():
+    assert np.isclose(ddp_energy(15.29), 3.669, rtol=0.01)
