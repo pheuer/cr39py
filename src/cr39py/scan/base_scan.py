@@ -249,6 +249,8 @@ class Scan(ExportableClassMixin):
         # Etch time, u.Quantity
         self._etch_time = None
 
+        self._filepath = None
+
         self.metadata = {}
 
     @property
@@ -277,6 +279,16 @@ class Scan(ExportableClassMixin):
             Etch time
         """
         return self._etch_time
+
+    @property
+    def filepath(self) -> Path:
+        """
+        Path to the file from which the scan was loaded.
+
+        If the scan was not loaded from a file, e.g. if it was
+        created directly from a track array, this will be ``None``.
+        """
+        return self._filepath
 
     @property
     def axes(self) -> dict[Axis]:
@@ -350,7 +362,10 @@ class Scan(ExportableClassMixin):
 
         tracks, metadata = read_cpsa(path)
 
-        return cls.from_tracks(tracks, etch_time, metadata=metadata)
+        obj = cls.from_tracks(tracks, etch_time, metadata=metadata)
+        obj._filepath = path
+
+        return obj
 
     # **********************************
     # Framesize setup
