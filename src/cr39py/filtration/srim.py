@@ -15,6 +15,34 @@ from cr39py.core.data import data_dir
 
 
 class SRIMData:
+    """
+    Represents an output file from the `SRIM <http://www.srim.org/>`_ code.
+
+
+    Definitions
+    -----------
+    In SRIM, particles have initial velocities parallel to the x-axis, and
+    the y and z axes are parallel to the target surface. If the total number
+    of particles is denoted :math:`N` and :math:`(x_i,y_i,z_i)` is the final position of the deposited ion, then
+
+
+    .. math::
+        \\text{Projected (logitudinal) Range} = R_p = \sum_i x_i / N = \langle x \\rangle
+
+    .. math::
+        \\text{Radial Range} = R_r = \sum_i \sqrt{y_i^2 + z_i^2} / N
+
+    .. math::
+        \\text{Longitudinal Straggle}  = \sigma = \sqrt{\sum_i x_i^2/N - R_p^2} = \sqrt{ \langle (\Delta x_i)^2 \\rangle }
+
+    .. math::
+        \\text{Radial Straggle}  = \sigma_r = \sqrt{\sum_i (y_i^2 + z_i^2)/N - R_r^2} = \sqrt{ \langle (\Delta r_i)^2 \\rangle }
+
+    .. math::
+        \\text{Lateral Straggle}  = \sigma_y = \\bigg ( \sum_i (  [(|y_i| + |z_i|)/2]^2 /N \\bigg )^{1/2}
+
+    These definitions are taken from the SRIM/TRIM user manual.
+    """
 
     @classmethod
     def from_file(cls, file: Path | str) -> None:
@@ -275,10 +303,7 @@ class SRIMData:
             range at that energy in meters.
         """
 
-        # Uses log-log scale fed into a cubic spline.
-        cs = CubicSpline(x=np.log(self.ion_energy), y=np.log(self.projected_range))
-        interp_fcn = lambda e: np.exp(cs(np.log(e)))
-
+        interp_fcn = CubicSpline(x=self.ion_energy, y=self.projected_range)
         return interp_fcn
 
     @property
@@ -299,13 +324,7 @@ class SRIMData:
         interp_fcn : callable
             Takes an ion energy value in eV and returns the expected longitudinal stragle at that energy in meters.
         """
-
-        # Uses log-log scale fed into a cubic spline.
-        cs = CubicSpline(
-            x=np.log(self.ion_energy), y=np.log(self.longitudinal_straggle)
-        )
-        interp_fcn = lambda e: np.exp(cs(np.log(e)))
-
+        interp_fcn = CubicSpline(x=self.ion_energy, y=self.longitudinal_straggle)
         return interp_fcn
 
     @property
@@ -326,9 +345,5 @@ class SRIMData:
         interp_fcn : callable
             Takes an ion energy value in eV and returns the expected lateral stragle at that energy in meters.
         """
-
-        # Uses log-log scale fed into a cubic spline.
-        cs = CubicSpline(x=np.log(self.ion_energy), y=np.log(self.lateral_straggle))
-        interp_fcn = lambda e: np.exp(cs(np.log(e)))
-
+        interp_fcn = CubicSpline(x=self.ion_energy, y=self.lateral_straggle)
         return interp_fcn

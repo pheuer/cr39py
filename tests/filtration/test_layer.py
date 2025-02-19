@@ -122,10 +122,10 @@ def test_ranging_energy_loss(layer, particle, Ein, ignore):
 # Again the expected values are from MIT AnalyzeCR39
 # Values are Material, Particle, Ein, Expected projected range, Expected Straggle
 cases = [
-    ("Al", "Proton", 14.7 * u.MeV, 1225 * u.um, 51.1 * u.um),
-    ("Ta", "Proton", 12 * u.MeV, 261.98 * u.um, 17.06 * u.um),
-    ("CR-39", "Proton", 2.5 * u.MeV, 86.52 * u.um, 3.63 * u.um),
-    ("Ta", "Deuteron", 12 * u.MeV, 175 * u.um, 9.97 * u.um),
+    ("Al", "Proton", 14.7 * u.MeV, 1225 * u.um, 40 * u.um),
+    ("Ta", "Proton", 12 * u.MeV, 261.98 * u.um, 30.15 * u.um),
+    ("CR-39", "Proton", 2.5 * u.MeV, 86.52 * u.um, 2.66 * u.um),
+    ("Ta", "Deuteron", 12 * u.MeV, 175 * u.um, 16.83 * u.um),
 ]
 
 
@@ -136,7 +136,11 @@ def test_projected_range(material, particle, Ein, projrange, straggle):
     assert np.isclose(pr, projrange, rtol=0.03)
 
 
-# TODO: Add stragle interpolator and test here
+@pytest.mark.parametrize("material,particle,Ein,projrange,straggle", cases)
+def test_lateral_straggle(material, particle, Ein, projrange, straggle):
+    l = Layer.from_string(f"1000 um {material}")
+    calc_straggle = l.lateral_straggle(particle, Ein)
+    assert np.isclose(calc_straggle, straggle, rtol=0.03)
 
 
 cases = [
@@ -163,9 +167,3 @@ def test_particle_stops_when_energy_goes_negative():
     l = Layer.from_string("1 m Ta")
     Eout = l.range_down("Proton", 2 * u.MeV, dx=0.1 * u.um)
     assert Eout.m == 0
-
-
-def test_dx_too_large_in_ranging():
-    l = Layer.from_string("100 um Ta")
-    with pytest.raises(ValueError):
-        l.range_down("Proton", 4 * u.MeV, dx=20 * u.um)

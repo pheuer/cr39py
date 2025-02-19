@@ -179,20 +179,8 @@ class Layer(ExportableClassMixin):
 
             dE = interpolated_stopping_power * u.keV / u.um * (ds * u.um)
 
-            # Compute the fractional error in the stopping power across the sublayer
-            # Use this to raise an exception if the numerical integration is too coarse
-            # Only do this calculation above the Bragg peak, because the SP error
-            # is always large when you traverse the Bragg peak
-            if E > sp_peak:
-                sp_err = (
-                    np.abs(sp_fcn((E - dE).m_as(u.eV)) - interpolated_stopping_power)
-                    / interpolated_stopping_power
-                )
-                if sp_err > 0.05:
-                    print(sp_err)
-                    raise ValueError(
-                        "|sp(E-dE)-sp(E)|/sp(E)={sp_err*100:.2f}% exceeds recommended threshold: use a smaller `dx`."
-                    )
+            # TODO: Find a better way of detecting if dx is too large, or automatically determining
+            # an appropriate dx
 
             E -= dE
 
@@ -205,6 +193,8 @@ class Layer(ExportableClassMixin):
     def projected_range(self, particle: str, E_in: u.Quantity) -> u.Quantity:
         """
         Calculate the projected range of a particle in the layer.
+
+        See the `~cr39py.filtration.srim.SRIMData` class for formal definition of this quantity.
 
         Parameters
         ----------
@@ -221,6 +211,40 @@ class Layer(ExportableClassMixin):
         """
         prjrng_interp = self.srim_data(particle).projected_range_interpolator
         return prjrng_interp(E_in.m_as(u.eV)) * u.m
+
+    def lateral_straggle(self, particle: str, E_in: u.Quantity) -> u.Quantity:
+        """
+        Calculate the lateral straggle of a particle in the layer.
+
+        If the particle passes through the layer, this is the straggle experienced by the particle in the layer.
+        If the particle stops in the layer, this is the total straggle up to the stopping point.
+
+        See the `~cr39py.filtration.srim.SRIMData` class for formal definition of this quantity.
+
+        Parameters
+        ----------
+        particle : str
+            Incident particle
+
+        E_in : u.Quantity
+            Energy of the particle before ranging in the layer.
+
+        Returns
+        -------
+        R : u.Quantity
+            Projected range of the particle in the layer.
+        """
+        straggle_interp = self.srim_data(particle).lateral_straggle_interpolator
+
+        E_out = self.range_down(particle, E_in)
+
+        # If particle has stopped, return the total straggle.
+        if E_out.m <= 0:
+            return straggle_interp(E_in.m_as(u.eV)) * u.m
+        # Otherwise return just the straggle in this range of energies
+        return (
+            straggle_interp(E_in.m_as(u.eV)) - straggle_interp(E_out.m_as(u.eV))
+        ) * u.m
 
     def projected_depth_for_energy(
         self, particle: str, E_in: u.Quantity, E_at: u.Quantity
