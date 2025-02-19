@@ -944,6 +944,16 @@ class Scan(ExportableClassMixin):
         elif ext.lower() == ".csv":
             np.savetxt(path, arr.m, delimiter=",")
 
+        elif ext.lower() == ".png":
+            fig, ax = plt.subplots()
+            ax.set_aspect("equal")
+            if self.filepath is not None:
+                ax.set_title(self.filepath.stem, fontsize=9)
+            ax.pcolormesh(hax.m, vax.m, arr.m.T)
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            fig.savefig(path, dpi=200)
+
         else:
             raise ValueError(f"Unsupported file extension: {ext}")
 
