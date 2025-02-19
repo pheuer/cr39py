@@ -46,9 +46,9 @@ def test_srimdata_attributes(SRIMobj):
         ("dEdx_electronic", np.ndarray),
         ("dEdx_nuclear", np.ndarray),
         ("projected_range", np.ndarray),
-        ("longitudinal_straggling", np.ndarray),
-        ("lateral_straggling", np.ndarray),
-        ("lateral_straggling", np.ndarray),
+        ("longitudinal_straggle", np.ndarray),
+        ("lateral_straggle", np.ndarray),
+        ("lateral_straggle", np.ndarray),
     ]
 
     for attr, type in attrs:
@@ -57,7 +57,12 @@ def test_srimdata_attributes(SRIMobj):
 
 
 def test_get_srim_interpolators(SRIMobj):
-    interps = ["projected_range_interpolator", "dEdx_total_interpolator"]
+    interps = [
+        "projected_range_interpolator",
+        "dEdx_total_interpolator",
+        "longitudinal_straggle_interpolator",
+        "lateral_straggle_interpolator",
+    ]
 
     for attr in interps:
         interp = getattr(SRIMobj, attr)
