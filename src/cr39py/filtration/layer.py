@@ -71,7 +71,7 @@ class Layer(ExportableClassMixin):
 
         # Split the string by whitespace
         s = s.split()
-        if len(s) < 3:
+        if len(s) != 3:
             raise ValueError("Invalid string code for Material")
 
         unit = u(s[1])

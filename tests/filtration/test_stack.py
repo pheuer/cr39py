@@ -1,4 +1,18 @@
 # -*- coding: utf-8 -*-
+"""
+Tests for stack.py
+"""
+
+import os
+from pathlib import Path
+
+import h5py
+import numpy as np
+import pytest
+
+from cr39py.core.units import unit_registry as u
+from cr39py.filtration.layer import Layer
+from cr39py.filtration.stack import Stack
 
 
 def test_create_stack_from_list_of_layers():
@@ -18,6 +32,12 @@ def test_create_stack_from_string():
     s2 = Stack.from_string("20 um Ta, 100 um Al")
 
     assert s1 == s2
+
+
+def test_add_layer():
+    s = Stack.from_string("20 um Ta, 100 um Al")
+    s.add_layer(Layer.from_string("10 um Ta"))
+    s.add_layer("20 um Ta")
 
 
 def test_stackproperties():
