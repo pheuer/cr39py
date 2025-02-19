@@ -1,5 +1,5 @@
 """
-The `~cr39py.filtration.layer` module contains the Layer class, which
+The `~cr39py.filtration.layer` module contains the `~cr39py.filtration.layer.Layer` class, which
 is used to represent a piece of filtration material.
 
 These classes can be used to calculate particle ranging in detector filters.

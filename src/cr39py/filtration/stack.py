@@ -1,6 +1,7 @@
 """
-The `~cr39py.filtration.stack` module contains the Stack class, which
-is used to represent filtration stacks composed of multiple layers of material.
+The `~cr39py.filtration.stack` module contains the `~cr39py.filtration.stack.Stack` class, which
+is used to represent filtration stacks composed of multiple layers of material, represented as
+`~cr39py.filtration.layer.Layer` objects.
 
 These classes can be used to calculate particle ranging in detector filters.
 """
@@ -15,7 +16,7 @@ from cr39py.filtration.layer import Layer
 @saveable_class()
 class Stack(ExportableClassMixin):
     r"""
-    An ordered list of `~cr39py.filtration.stack.Layer` objects.
+    An ordered list of `~cr39py.filtration.layer.Layer` objects.
     """
 
     _exportable_attributes = ["layers"]
@@ -43,7 +44,7 @@ class Stack(ExportableClassMixin):
 
         Parameters
         ----------
-        layer : Layer | str
+        layer : `~cr39py.filtration.layer.Layer` | str
             Layer to add. If a string, it will be converted to a Layer object.
         """
         if isinstance(layer, str):
