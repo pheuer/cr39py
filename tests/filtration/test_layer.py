@@ -125,7 +125,7 @@ cases = [
     ("Al", "Proton", 14.7 * u.MeV, 1225 * u.um, 51.1 * u.um),
     ("Ta", "Proton", 12 * u.MeV, 261.98 * u.um, 17.06 * u.um),
     ("CR-39", "Proton", 2.5 * u.MeV, 86.52 * u.um, 3.63 * u.um),
-    ("Ta", "Deuteron", 12 * u.MeV, 521 * u.um, 22.4 * u.um),
+    ("Ta", "Deuteron", 12 * u.MeV, 175 * u.um, 9.97 * u.um),
 ]
 
 
