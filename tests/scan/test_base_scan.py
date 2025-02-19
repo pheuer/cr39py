@@ -69,7 +69,8 @@ def test_subset(cr39scan):
     # Select the last tubset
     cr39scan.select_subset(-1)
 
-    cr39scan.remove_subset(2)
+    # Remove the first subset
+    cr39scan.remove_subset(0)
 
 
 def test_manipulate_cuts(cr39scan):
