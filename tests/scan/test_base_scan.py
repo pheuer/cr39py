@@ -62,7 +62,27 @@ def test_subset(cr39scan):
     with pytest.raises(ValueError):
         cr39scan.remove_subset(0)
 
+    # Cannot select subset outside range
+    with pytest.raises(ValueError):
+        cr39scan.remove_subset(1000)
+
+    # Select the last tubset
+    cr39scan.select_subset(-1)
+
     cr39scan.remove_subset(2)
+
+
+def test_manipulate_cuts(cr39scan):
+
+    cr39scan.set_domain(xmin=0)
+    cr39scan.add_cut(cmin=30)
+    cr39scan.add_cut(Cut(dmin=10))
+
+    cr39scan.set_ndslices(2)
+    cr39scan.select_dslice(0)
+
+    cr39scan.remove_cut(1)
+    cr39scan.replace_cut(0, Cut(cmin=20))
 
 
 @pytest.mark.parametrize("statistic", ["mean", "median"])
@@ -70,7 +90,9 @@ def test_track_energy(cr39scan, statistic):
     cr39scan.track_energy("D", statistic)
 
 
-@pytest.mark.parametrize("attribute", ["chi", "F2", "track_density"])
+@pytest.mark.parametrize(
+    "attribute", ["chi", "F2", "track_density", "etch_time", "ntracks"]
+)
 def test_access_attributes(cr39scan, attribute):
     assert hasattr(cr39scan, attribute)
     getattr(cr39scan, attribute)
@@ -84,9 +106,10 @@ def test_histogram(cr39scan):
     cr39scan.histogram()
 
 
-def test_plot(cr39scan):
+@pytest.mark.parametrize("fcn_name", ["cutplot", "plot", "focus_plot"])
+def test_plot_functions(fcn_name, cr39scan):
     with SilentPlotting():
-        cr39scan.cutplot()
+        getattr(cr39scan, fcn_name)()
 
 
 @pytest.mark.parametrize("ext", [".csv", ".h5", ".png"])

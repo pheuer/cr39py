@@ -59,10 +59,10 @@ class Axis(ExportableClassMixin):
         parent_scan: "Scan" = None,
     ) -> None:
 
-        if ind is None:
+        if ind is None:  # pragma: no cover
             raise ValueError("ind argument is required")
 
-        if unit is None:
+        if unit is None:  # pragma: no cover
             raise ValueError("unit argument is required")
 
         # These parameters are intended to not be mutable
