@@ -22,6 +22,13 @@ def cr39scan():
 def test_framesize(cr39scan):
     cr39scan.set_framesize("X", 500 * u.um)
 
+    assert cr39scan.framesize("X") == 500 * u.um
+    assert cr39scan.framesize("Y") == cr39scan.framesize("X")
+    assert cr39scan.framesize("XY") == cr39scan.framesize("X")
+
+    with pytest.raises(KeyError):
+        cr39scan.framesize("not a valid axis key")
+
 
 def test_optimize_xy_framesize(cr39scan):
     cr39scan.optimize_xy_framesize()
