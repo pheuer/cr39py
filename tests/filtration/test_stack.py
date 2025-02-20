@@ -65,7 +65,15 @@ def test_stack_ranging_energy_loss():
     assert np.isclose(Elost, Ein - Eout, rtol=0.01)
 
 
-def test_stack_lateral_straggle():
-    s = Stack.from_string("100 um Ta, 100 um Al")
-    straggle = s.lateral_straggle("Proton", 12 * u.MeV)
-    assert np.isclose(straggle, 14.52 * u.um, rtol=0.01)
+cases = [
+    ("100 um Ta, 100 um Al", "Proton", 12 * u.MeV, 14.52 * u.um),
+    # Case where particle will stop in the stack
+    ("100 um Ta, 2000 um Al", "Proton", 1 * u.MeV, 1.12 * u.um),
+]
+
+
+@pytest.mark.parametrize("stack,particle,energy,expected", cases)
+def test_stack_lateral_straggle(stack, particle, energy, expected):
+    s = Stack.from_string(stack)
+    straggle = s.lateral_straggle(particle, energy)
+    assert np.isclose(straggle, expected, rtol=0.01)
