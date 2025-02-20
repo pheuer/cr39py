@@ -231,8 +231,8 @@ class Layer(ExportableClassMixin):
 
         Returns
         -------
-        R : u.Quantity
-            Projected range of the particle in the layer.
+        straggle : u.Quantity
+            Lateral straggle of the particle in the stack.
         """
         straggle_interp = self.srim_data(particle).lateral_straggle_interpolator
 

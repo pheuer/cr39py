@@ -63,3 +63,9 @@ def test_stack_ranging_energy_loss():
     Elost = s.ranging_energy_loss("Deuteron", Ein)
 
     assert np.isclose(Elost, Ein - Eout, rtol=0.01)
+
+
+def test_stack_lateral_straggle():
+    s = Stack.from_string("100 um Ta, 100 um Al")
+    straggle = s.lateral_straggle("Proton", 12 * u.MeV)
+    assert np.isclose(straggle, 14.52 * u.um, rtol=0.01)

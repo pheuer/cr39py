@@ -200,3 +200,40 @@ class Stack(ExportableClassMixin):
 
         """
         return E_in - self.range_down(particle, E_in, dx=dx)
+
+    def lateral_straggle(self, particle: str, E_in: u.Quantity) -> u.Quantity:
+        """
+        Calculate the lateral straggle of a particle in the stack.
+
+        If the particle passes through the stack, this is the straggle experienced by the particle in the stack.
+        If the particle stops in the stack, this is the total straggle up to the stopping point.
+
+        This model assumes that the lateral straggle is additive in each layer.
+
+        See the `~cr39py.filtration.srim.SRIMData` class for formal definition of this quantity.
+
+        Parameters
+        ----------
+        particle : str
+            Incident particle
+
+        E_in : u.Quantity
+            Energy of the particle before ranging in the stack.
+
+        Returns
+        -------
+        straggle : u.Quantity
+            Lateral straggle of the particle in the stack.
+        """
+        straggle = 0 * u.um
+        for l in self.layers:
+            straggle += l.lateral_straggle(particle, E_in)
+
+            # Range down the particle energy before calculating straggle in the next layer
+            E_in = l.range_down(particle, E_in)
+
+            # If the particle has stopped, return the accumulated straggle
+            if E_in.m <= 0:
+                return straggle
+
+        return straggle
