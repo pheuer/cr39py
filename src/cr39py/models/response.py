@@ -292,7 +292,9 @@ class CParameterModel:
         D_scaled = self.D_scaled(diameter)
 
         DE_curve = self.scaled_diameter_curve(eaxis)
-        interp = interp1d(DE_curve, eaxis, kind="cubic")
+        interp = interp1d(
+            DE_curve, eaxis, kind="cubic", bounds_error=False, fill_value=np.nan
+        )
 
         E = interp(D_scaled)
 
