@@ -5,3 +5,4 @@ Bibliography
 ############
 
 .. bibliography::
+   :all:

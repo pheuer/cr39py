@@ -64,7 +64,9 @@ where = ["src"]
 
 [tool.codespell]
 # Skip ipynb files because executed files have lots of strange symbols in them.
-skip = '*.ipynb'
+# Skip the bibliography files...too many names etc.
+skip = '*.ipynb,*.bib'
+
 # Add false positives found by codespell to ignore-words-list
 ignore-words-list = """
 astroid,

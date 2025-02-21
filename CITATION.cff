@@ -1,0 +1,19 @@
+title: cr39py
+version: 2025.2.0
+date-released: 2025-02-21
+type: software
+message: "If you use this software, please cite it as below."
+repository-code: https://github.com/pheuer/cr39py
+keywords:
+- plasma
+- particle
+- physics
+- nuclear
+- CR-39
+- detector
+authors:
+  - family-names: Heuer
+    given-names: Peter
+    orcid: https://orcid.org/0000-0001-5050-6606
+
+cff-version: 1.2.0

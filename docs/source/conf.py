@@ -76,7 +76,7 @@ autodoc_typehints_format = "short"
 
 # sphinxcontrib-bibtex
 
-bibtex_bibfiles = ["source/bibliography.bib"]
+bibtex_bibfiles = ["bibliography.bib"]
 bibtex_default_style = "plain"
 bibtex_reference_style = "author_year"
 bibtex_cite_id = "{key}"
