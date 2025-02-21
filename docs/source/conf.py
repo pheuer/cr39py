@@ -15,7 +15,7 @@ copyright = "2025, Peter Heuer"
 author = "Peter Heuer"
 
 release = "0.1"
-version = "2025.1"
+version = "2025.2"
 
 # -- General configuration
 
@@ -31,6 +31,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "autoapi.extension",
     "nbsphinx",
+    "sphinxcontrib.bibtex",
 ]
 
 # sphinx-autoapi
@@ -71,3 +72,11 @@ epub_show_urls = "footnote"
 
 autoclass_content = "both"
 autodoc_typehints_format = "short"
+
+
+# sphinxcontrib-bibtex
+
+bibtex_bibfiles = ["bibliography.bib"]
+bibtex_default_style = "plain"
+bibtex_reference_style = "author_year"
+bibtex_cite_id = "{key}"

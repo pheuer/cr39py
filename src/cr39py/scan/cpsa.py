@@ -1,5 +1,5 @@
 """
-This module contains code for handling the MIT CPSA format for CR39
+This module contains code for reading the MIT CPSA format for CR-39
 track data.
 """
 
@@ -28,7 +28,7 @@ def read_cpsa(path: Path) -> TrackData:
 
     Notes
     -----
-    Adapted from code written by Hans Rinderknecht
+    Adapted from code written by Hans Rinderknecht.
 
     """
     with open(path, "rb") as file:

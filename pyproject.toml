@@ -8,7 +8,7 @@ requires = [
 
 [project]
 name = "cr39py"
-version = "2025.1"
+version = "2025.2"
 authors = [
   {name = "Peter Heuer"},
   ]
@@ -44,6 +44,7 @@ docs = [
   "sphinx>=7.3.7",
   "sphinx-autoapi>=3.3.3",
   "sphinx-rtd-theme>=1.3.0rc1",
+  "sphinxcontrib-bibtex >= 2.6.2",
   "ipykernel>=6.29.5",
   # To build locally, pandoc must also be installed locally for nbsphinx
   # https://pandoc.org/installing.html
@@ -63,7 +64,9 @@ where = ["src"]
 
 [tool.codespell]
 # Skip ipynb files because executed files have lots of strange symbols in them.
-skip = '*.ipynb'
+# Skip the bibliography files...too many names etc.
+skip = '*.ipynb,*.bib'
+
 # Add false positives found by codespell to ignore-words-list
 ignore-words-list = """
 astroid,
