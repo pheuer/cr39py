@@ -8,15 +8,15 @@ to develop tracks in the surface. Both etching processes are done in a sodium hy
 Bulk Etch
 ---------
 Bulk etching is performed in a mixture of 25% 10 normal NaOH and 75% methanol at 55 degrees C. This
-rapidly and uniformly removes surface material. The ``BulkEtchModel`` class provides a simple model
+rapidly and uniformly removes surface material. The `~cr39py.models.response.BulkEtchModel` class provides a simple model
 for the amount of material removed given the bulk etch velocity.
 
 
 Track Etch
 ----------
 Track etching is done in a 6 normal (6 g/l) NaOH solution at 80 degrees C. During track etching,
-about 2 um/hr of material is removed uniformly from the surface. The ``CParameterModel`` and
-``TwoParameterModel`` classes provide response functions that can be used to estimate the energy
+about 2 um/hr of material is removed uniformly from the surface. The `~cr39py.models.response.CParameterModel` and
+`~cr39py.models.response.TwoParameterModel` classes provide response functions that can be used to estimate the energy
 of a particle that created a track of a given diameter after a given track etch.
 
 
@@ -25,8 +25,7 @@ References
 The following papers are useful references for CR-39 response to charged particles
 
 * :cite:t:`Cartwright1978nuclear` is one of the original papers on the use of CR-39 for detecting charged particles.
-* :cite:t:`Sinenian2011response` presents initial measurements of track diameter vs. etch time, and discusses the impact of factors such as etch bath temperature,
-time to exposure, and CR-39 aging.
+* :cite:t:`Sinenian2011response` presents initial measurements of track diameter vs. etch time, and discusses the impact of factors such as etch bath temperature, time to exposure, and CR-39 aging.
 * :cite:t:`Lahmann2020cr39` presents the c-parameter and two-parameter models for CR-39 response that are currently the most widely used response models.
 
 These papers consider the response to other particles

@@ -1,19 +1,24 @@
-title: cr39py
-version: 2025.2.0
-date-released: 2025-02-21
-type: software
-message: "If you use this software, please cite it as below."
-repository-code: https://github.com/pheuer/cr39py
-keywords:
-- plasma
-- particle
-- physics
-- nuclear
-- CR-39
-- detector
-authors:
-  - family-names: Heuer
-    given-names: Peter
-    orcid: https://orcid.org/0000-0001-5050-6606
-
 cff-version: 1.2.0
+title: cr39py
+message: 'If you use this software, please cite it as below.'
+type: software
+authors:
+  - given-names: Peter
+    family-names: Heuer
+    affiliation: >-
+      University of Rochester Laboratory for Laser
+      Energetics
+    orcid: 'https://orcid.org/0000-0001-5050-6606'
+repository-code: 'https://github.com/pheuer/cr39py'
+abstract: >-
+  Code for designing experiments using CR-39, calculating
+  etch times for CR-39 processing, and analyzing CR-39 track
+  data.
+keywords:
+  - CR-39
+  - particle
+  - nuclear
+  - physics
+  - detector
+license: MIT
+date-released: '2025-02-21'
