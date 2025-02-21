@@ -2,8 +2,6 @@
 The `~cr39py.filtration.stack` module contains the `~cr39py.filtration.stack.Stack` class, which
 is used to represent filtration stacks composed of multiple layers of material, represented as
 `~cr39py.filtration.layer.Layer` objects.
-
-These classes can be used to calculate particle ranging in detector filters.
 """
 
 import numpy as np
@@ -16,7 +14,13 @@ from cr39py.filtration.layer import Layer
 @saveable_class()
 class Stack(ExportableClassMixin):
     r"""
-    An ordered list of `~cr39py.filtration.layer.Layer` objects.
+    An ordered list of `~cr39py.filtration.layer.Layer` objects representing a stack of filter materials.
+
+    References
+    ----------
+    The ion stopping and ranging calculations performed by this clase use
+    data from the `SRIM <http://www.srim.org/>`__ code :cite:p:`SRIM`.
+    If you use these features, please cite SRIM.
     """
 
     _exportable_attributes = ["layers"]
