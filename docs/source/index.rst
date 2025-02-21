@@ -18,7 +18,7 @@ cr39py is a package for analyzing CR-39 particle track data.
 
    Bibliography <bibliography>
 
-   Acknowledging and citing CR39py <citation>
+   Acknowledging and Citing cr39py <citation>
 
 
 
