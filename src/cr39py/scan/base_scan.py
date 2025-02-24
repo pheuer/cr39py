@@ -401,6 +401,29 @@ class Scan(ExportableClassMixin):
         else:
             self._axes[ax_key].framesize = framesize
 
+    def framesize(self, ax_key: str = "XY") -> u.Quantity:
+        """
+        The frame size for a given axis.
+
+        Parameters
+        ----------
+        ax_key : str, optional
+            The axis for the frame size. The default is 'XY',
+            which returns the framesize for the X and Y axes,
+            which are always the same.
+
+        Returns
+        -------
+        framesize: u.Quantity
+            Framesize of the requested axis.
+        """
+        if ax_key == "XY":
+            return self._axes["X"].framesize
+        elif ax_key in self._axes:
+            return self._axes[ax_key].framesize
+        else:
+            raise KeyError(f"Axis name not recognized: {ax_key}")
+
     def optimize_xy_framesize(self, tracks_per_frame_goal: int = 10) -> None:
         """
         Optimizes XY framesize for a given tracks per frame.
