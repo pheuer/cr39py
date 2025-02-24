@@ -201,7 +201,7 @@ class Axis(ExportableClassMixin):
 
 class Scan(ExportableClassMixin):
     """
-    A representation of a piece of CR39 data.
+    A representation of a scan of a piece of CR-39 data.
 
     A Scan object contains an array of tracks and an axis for each
     dimension of the track data: X,Y,D,C,E,Z. A Scan object also
@@ -335,7 +335,7 @@ class Scan(ExportableClassMixin):
     @classmethod
     def from_cpsa(cls, path: Path, etch_time: float | None = None):
         """
-        Initialize a Scan object from a CPSA file.
+        Initialize a Scan object from an MIT CPSA file.
 
         The etch_time can be automatically extracted from the filename
         if it is included in a format like  ``_#m_``, ``_#min_``, ``_#h_``,
@@ -722,6 +722,9 @@ class Scan(ExportableClassMixin):
         """
         The energy of the currently selected tracks.
 
+        This function uses the `~cr39py.models.response.TwoParameterModel`
+        of :cite:t:`Lahmann2020cr39` for the CR-39 response
+
         Parameters
         ----------
         particle : str
@@ -734,6 +737,13 @@ class Scan(ExportableClassMixin):
         -------
         energy : float
             Energy in MeV
+
+
+        References
+        ----------
+        Please cite :cite:t:`Lahmann2020cr39` for the two parameter model if
+        you use this method.
+
         """
 
         d = self.selected_tracks[:, 2]
@@ -845,6 +855,8 @@ class Scan(ExportableClassMixin):
     def chi(self) -> tuple[np.ndarray]:
         """The Zylstra overlap parameter ``chi`` for each cell.
 
+        As defined in :cite:t:`Zylstra2012new`.
+
         Only includes currently selected tracks.
 
         Returns
@@ -858,11 +870,6 @@ class Scan(ExportableClassMixin):
 
         chi : `~np.ndarray`
             Histogram of chi for each cell
-
-        Notes
-        -----
-        See A. B. Zylstra et al. Nucl. Instrum. Methods Phys. Res. A 2012
-
         """
         x, y, ntracks = self.histogram(axes=("X", "Y"))
         x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
@@ -881,6 +888,8 @@ class Scan(ExportableClassMixin):
     def F2(self) -> tuple[np.ndarray]:
         """
         The Zylstra overlap parameter ``F2`` for each cell.
+
+        As defined in :cite:t:`Zylstra2012new`.
 
         F2 is the fraction of tracks that overlap one other track, and
         is a reasonable approximation of the number of tracks that will
@@ -907,10 +916,6 @@ class Scan(ExportableClassMixin):
 
         F2 : `~np.ndarray`
             Histogram of F2 for each cell
-
-        Notes
-        -----
-        See A. B. Zylstra et al. Nucl. Instrum. Methods Phys. Res. A 2012
 
         """
 
@@ -1017,8 +1022,8 @@ class Scan(ExportableClassMixin):
         In addition to the track quantities [X,Y,D,C,E,Z], the following
         custom quantities can also be plotted:
 
-        - CHI : The ``chi`` track overlap parameter from Zylstra et al. 2012
-        - F2 : The ``F2`` track overlap parameter from Zylstra et al. 2012
+        - CHI : The ``chi`` track overlap parameter from :cite:t:`Zylstra2012new`
+        - F2 : The ``F2`` track overlap parameter from :cite:t:`Zylstra2012new`
         - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
 
         Parameters

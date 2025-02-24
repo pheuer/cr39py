@@ -1,7 +1,7 @@
-Welcome to CR39py's documentation!
+Welcome to cr39py's documentation!
 ===================================
 
-CR39 py is a package for analyzing CR39 particle track data.
+cr39py is a package for analyzing CR-39 particle track data.
 
 .. note::
 
@@ -15,6 +15,10 @@ CR39 py is a package for analyzing CR39 particle track data.
    Usage <usage>
 
    API <autoapi/index>
+
+   Bibliography <bibliography>
+
+   Acknowledging and Citing cr39py <citation>
 
 
 
