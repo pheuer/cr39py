@@ -6,13 +6,15 @@ import numpy as np
 def goal_diameter(fluence, desired_F2=0.025, max_goal=10):
     """Calculates the ideal track diameter in um to achieve a given overlap parameter F2.
 
+    The track overlap parameter is defined in :cite:t:`Zylstra2012new`.
+
     Parameters
     ----------
     fluence : float
         The fluence on the CR-39 in 1/cm^2
 
     desired_F2 : float, optional
-        The desired track overlap parameter F2. The default
+        The desired track overlap parameter F2, as defined in :cite:t:`Zylstra2012new`. The default
         value is 0.025, meaning that ~2.5% of tracks will suffer overlap with
         a neighbor. The model breaks down for F2~>0.3.
 
@@ -35,7 +37,7 @@ def goal_diameter(fluence, desired_F2=0.025, max_goal=10):
 
     def chi(F2):
         """
-        Zylstra Eq. 9 inverted to solve for chi given F2
+        :cite:t:`Zylstra2012new` Eq. 9 inverted to solve for chi given F2
         Works up to F2=0.375, then the sqrt becomes imaginary.
         """
         return 3 / 4 * (1 - np.sqrt(1 - 8 / 3 * F2))
