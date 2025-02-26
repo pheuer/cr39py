@@ -201,7 +201,7 @@ class Axis(ExportableClassMixin):
 
 class Scan(ExportableClassMixin):
     """
-    A representation of a piece of CR39 data.
+    A representation of a scan of a piece of CR-39 data.
 
     A Scan object contains an array of tracks and an axis for each
     dimension of the track data: X,Y,D,C,E,Z. A Scan object also
@@ -335,7 +335,7 @@ class Scan(ExportableClassMixin):
     @classmethod
     def from_cpsa(cls, path: Path, etch_time: float | None = None):
         """
-        Initialize a Scan object from a CPSA file.
+        Initialize a Scan object from an MIT CPSA file.
 
         The etch_time can be automatically extracted from the filename
         if it is included in a format like  ``_#m_``, ``_#min_``, ``_#h_``,
@@ -400,6 +400,29 @@ class Scan(ExportableClassMixin):
             self._axes["Y"].framesize = framesize
         else:
             self._axes[ax_key].framesize = framesize
+
+    def framesize(self, ax_key: str = "XY") -> u.Quantity:
+        """
+        The frame size for a given axis.
+
+        Parameters
+        ----------
+        ax_key : str, optional
+            The axis for the frame size. The default is 'XY',
+            which returns the framesize for the X and Y axes,
+            which are always the same.
+
+        Returns
+        -------
+        framesize: u.Quantity
+            Framesize of the requested axis.
+        """
+        if ax_key == "XY":
+            return self._axes["X"].framesize
+        elif ax_key in self._axes:
+            return self._axes[ax_key].framesize
+        else:
+            raise KeyError(f"Axis name not recognized: {ax_key}")
 
     def optimize_xy_framesize(self, tracks_per_frame_goal: int = 10) -> None:
         """
@@ -636,9 +659,11 @@ class Scan(ExportableClassMixin):
 
         tracks = self.current_subset.apply_cuts(self._tracks)
 
+        # TODO: Remove these lines? I don't think they are necessary now
+        # That axis contains a reference to the parent scan
         # Re-attach the new selected tracks to the axes objects
-        for ax in self._axes.values():
-            ax.tracks = tracks
+        # for ax in self._axes.values():
+        #    ax.tracks = tracks
 
         return tracks
 
@@ -699,6 +724,9 @@ class Scan(ExportableClassMixin):
         """
         The energy of the currently selected tracks.
 
+        This function uses the `~cr39py.models.response.TwoParameterModel`
+        of :cite:t:`Lahmann2020cr39` for the CR-39 response
+
         Parameters
         ----------
         particle : str
@@ -711,6 +739,13 @@ class Scan(ExportableClassMixin):
         -------
         energy : float
             Energy in MeV
+
+
+        References
+        ----------
+        Please cite :cite:t:`Lahmann2020cr39` for the two parameter model if
+        you use this method.
+
         """
 
         d = self.selected_tracks[:, 2]
@@ -747,6 +782,12 @@ class Scan(ExportableClassMixin):
         - 'E': ecentricity
         - 'Z' : z position/lens position during scan
 
+
+        Histograms of the following composite quantities can also be made
+        - CHI : The ``chi`` track overlap parameter from :cite:t:`Zylstra2012new`
+        - F2 : The ``F2`` track overlap parameter from :cite:t:`Zylstra2012new`
+        - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
+
         Parameters
         ---------
 
@@ -774,6 +815,21 @@ class Scan(ExportableClassMixin):
             Histogram array
 
         """
+
+        # TODO: There is currently no way to make histograms
+        # of the custom quantities with other tracks
+        # because they are properties so no keywords can be passed
+        # down into histogram...
+        #
+        # If the quantity is on the custom quantity list,
+        # return the custom quantity
+        if quantity == "CHI":
+            return self.chi
+        elif quantity == "F2":
+            return self.F2
+        elif quantity == "TRACK DENSITY":
+            return self.track_density
+
         if tracks is None:
             tracks = self.selected_tracks
 
@@ -822,6 +878,8 @@ class Scan(ExportableClassMixin):
     def chi(self) -> tuple[np.ndarray]:
         """The Zylstra overlap parameter ``chi`` for each cell.
 
+        As defined in :cite:t:`Zylstra2012new`.
+
         Only includes currently selected tracks.
 
         Returns
@@ -835,11 +893,6 @@ class Scan(ExportableClassMixin):
 
         chi : `~np.ndarray`
             Histogram of chi for each cell
-
-        Notes
-        -----
-        See A. B. Zylstra et al. Nucl. Instrum. Methods Phys. Res. A 2012
-
         """
         x, y, ntracks = self.histogram(axes=("X", "Y"))
         x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
@@ -858,6 +911,8 @@ class Scan(ExportableClassMixin):
     def F2(self) -> tuple[np.ndarray]:
         """
         The Zylstra overlap parameter ``F2`` for each cell.
+
+        As defined in :cite:t:`Zylstra2012new`.
 
         F2 is the fraction of tracks that overlap one other track, and
         is a reasonable approximation of the number of tracks that will
@@ -884,10 +939,6 @@ class Scan(ExportableClassMixin):
 
         F2 : `~np.ndarray`
             Histogram of F2 for each cell
-
-        Notes
-        -----
-        See A. B. Zylstra et al. Nucl. Instrum. Methods Phys. Res. A 2012
 
         """
 
@@ -991,13 +1042,6 @@ class Scan(ExportableClassMixin):
         """
         Plots a histogram of the track data.
 
-        In addition to the track quantities [X,Y,D,C,E,Z], the following
-        custom quantities can also be plotted:
-
-        - CHI : The ``chi`` track overlap parameter from Zylstra et al. 2012
-        - F2 : The ``F2`` track overlap parameter from Zylstra et al. 2012
-        - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
-
         Parameters
         ----------
 
@@ -1009,7 +1053,8 @@ class Scan(ExportableClassMixin):
             Sets which quantity to plot. The default is None, which will
             result in plotting an unweighted histogram of the number
             of tracks in each frame. Any of the track quantities are
-            valid, as are the list of custom quantities above.
+            valid, as are the list of custom quantities listed
+            in the docstring for the histogram method.
 
         tracks: `~numpy.ndarray` (ntracks,6) (optional)
             Array of tracks to plot. Defaults to the
@@ -1072,15 +1117,7 @@ class Scan(ExportableClassMixin):
         if zrange is None:
             zrange = [None, None]
 
-        # Get the requested histogram
-        if quantity == "CHI":
-            xax, yax, arr = self.chi
-        elif quantity == "F2":
-            xax, yax, arr = self.F2
-        elif quantity == "TRACK DENSITY":
-            xax, yax, arr = self.track_density
-        else:
-            xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
+        xax, yax, arr = self.histogram(axes=axes, quantity=quantity, tracks=tracks)
 
         # Set all 0's in the histogram to NaN so they appear as
         # blank white space on the plot

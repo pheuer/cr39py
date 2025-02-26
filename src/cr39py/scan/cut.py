@@ -52,15 +52,34 @@ class Cut(ExportableClassMixin):
         Maximum c value
 
     emin: float (None)
-        Minimum x value
+        Minimum e value
 
     emax: float (None),
         Maximum e value
 
+    zmin: float (None)
+        Minimum z value
+
+    zmax: float (None),
+        Maximum z value
+
 
     """
 
-    _exportable_attributes = ["bounds"]
+    _exportable_attributes = [
+        "xmin",
+        "xmax",
+        "ymin",
+        "ymax",
+        "dmin",
+        "dmax",
+        "cmin",
+        "cmax",
+        "emin",
+        "emax",
+        "zmin",
+        "zmax",
+    ]
 
     defaults = {
         "xmin": -1e6,
@@ -73,6 +92,8 @@ class Cut(ExportableClassMixin):
         "cmax": 1e6,
         "emin": 0,
         "emax": 1e6,
+        "zmin": 0,
+        "zmax": 1000,
     }
 
     indices = {
@@ -84,8 +105,10 @@ class Cut(ExportableClassMixin):
         "dmax": 2,
         "cmin": 3,
         "cmax": 3,
-        "emin": 5,
-        "emax": 5,
+        "emin": 4,
+        "emax": 4,
+        "zmin": 5,
+        "zmax": 5,
     }
 
     def __init__(
@@ -101,20 +124,43 @@ class Cut(ExportableClassMixin):
         cmax: float = None,
         emin: float = None,
         emax: float = None,
+        zmin: float = None,
+        zmax: float = None,
     ):
 
-        self.bounds = {
-            "xmin": xmin,
-            "xmax": xmax,
-            "ymin": ymin,
-            "ymax": ymax,
-            "dmin": dmin,
-            "dmax": dmax,
-            "cmin": cmin,
-            "cmax": cmax,
-            "emin": emin,
-            "emax": emax,
+        self.xmin = xmin
+        self.xmax = xmax
+        self.ymin = ymin
+        self.ymax = ymax
+        self.dmin = dmin
+        self.dmax = dmax
+        self.cmin = cmin
+        self.cmax = cmax
+        self.emin = emin
+        self.emax = emax
+        self.zmin = zmin
+        self.zmax = zmax
+
+    @property
+    def bounds(self):
+        """
+        A dictionary of the current bounds.
+        """
+        bounds = {
+            "xmin": self.xmin,
+            "xmax": self.xmax,
+            "ymin": self.ymin,
+            "ymax": self.ymax,
+            "dmin": self.dmin,
+            "dmax": self.dmax,
+            "cmin": self.cmin,
+            "cmax": self.cmax,
+            "emin": self.emin,
+            "emax": self.emax,
+            "zmin": self.zmin,
+            "zmax": self.zmax,
         }
+        return bounds
 
     def __eq__(self, other):
         """Determines whether two cuts are equal
@@ -152,26 +198,6 @@ class Cut(ExportableClassMixin):
         else:
             return s
 
-    def __getattr__(self, key):
-        """Access bounds of the cut.
-
-        Allows bounds to be accessed as attributes
-
-        Examples
-        --------
-
-        >>> cut.dmax = cut.bounds['dmax]
-
-        """
-
-        if key in self.bounds.keys():
-            if self.bounds[key] is None:
-                return self.defaults[key]
-            else:
-                return self.bounds[key]
-        else:
-            raise ValueError(f"Unknown attribute for Cut: {key}")
-
     # These range properties are used to set the range for plotting
     @property
     def xrange(self):
@@ -198,12 +224,17 @@ class Cut(ExportableClassMixin):
         "Range of cut in E"
         return [self.bounds["emin"], self.bounds["emax"]]
 
+    @property
+    def zrange(self):
+        "Range of cut in Z"
+        return [self.bounds["zmin"], self.bounds["zmax"]]
+
     def update(self, **bounds):
         """
         Updates the cut from a list of provided keywords.
 
         Accepted keywords: xmin, xmax, ymin, ymax, cmin, cmax,
-        dmin, dmax, emin, emax
+        dmin, dmax, emin, emax, zmin, zmax
 
         Examples
         --------
