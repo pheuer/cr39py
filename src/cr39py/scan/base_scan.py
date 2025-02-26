@@ -824,7 +824,7 @@ class Scan(ExportableClassMixin):
         """
 
         # TODO: There is currently no way to make histograms
-        # of the custom quantities with other tracks, ranges etc.
+        # of the custom quantities with other tracks
         # because they are properties so no keywords can be passed
         # down into histogram...
         #
@@ -842,8 +842,6 @@ class Scan(ExportableClassMixin):
 
         ax0 = self._axes[axes[0]]
         ax1 = self._axes[axes[1]]
-
-        print(axes, ax0.ind, ax1.ind)
 
         # If creating a histogram like the X,Y,D plots
         if quantity is not None:
