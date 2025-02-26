@@ -659,9 +659,11 @@ class Scan(ExportableClassMixin):
 
         tracks = self.current_subset.apply_cuts(self._tracks)
 
+        # TODO: Remove these lines? I don't think they are necessary now
+        # That axis contains a reference to the parent scan
         # Re-attach the new selected tracks to the axes objects
-        for ax in self._axes.values():
-            ax.tracks = tracks
+        # for ax in self._axes.values():
+        #    ax.tracks = tracks
 
         return tracks
 
@@ -780,6 +782,12 @@ class Scan(ExportableClassMixin):
         - 'E': ecentricity
         - 'Z' : z position/lens position during scan
 
+
+        Histograms of the following composite quantities can also be made
+        - CHI : The ``chi`` track overlap parameter from :cite:t:`Zylstra2012new`
+        - F2 : The ``F2`` track overlap parameter from :cite:t:`Zylstra2012new`
+        - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
+
         Parameters
         ---------
 
@@ -807,6 +815,21 @@ class Scan(ExportableClassMixin):
             Histogram array
 
         """
+
+        # TODO: There is currently no way to make histograms
+        # of the custom quantities with other tracks
+        # because they are properties so no keywords can be passed
+        # down into histogram...
+        #
+        # If the quantity is on the custom quantity list,
+        # return the custom quantity
+        if quantity == "CHI":
+            return self.chi
+        elif quantity == "F2":
+            return self.F2
+        elif quantity == "TRACK DENSITY":
+            return self.track_density
+
         if tracks is None:
             tracks = self.selected_tracks
 
@@ -1019,13 +1042,6 @@ class Scan(ExportableClassMixin):
         """
         Plots a histogram of the track data.
 
-        In addition to the track quantities [X,Y,D,C,E,Z], the following
-        custom quantities can also be plotted:
-
-        - CHI : The ``chi`` track overlap parameter from :cite:t:`Zylstra2012new`
-        - F2 : The ``F2`` track overlap parameter from :cite:t:`Zylstra2012new`
-        - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
-
         Parameters
         ----------
 
@@ -1037,7 +1053,8 @@ class Scan(ExportableClassMixin):
             Sets which quantity to plot. The default is None, which will
             result in plotting an unweighted histogram of the number
             of tracks in each frame. Any of the track quantities are
-            valid, as are the list of custom quantities above.
+            valid, as are the list of custom quantities listed
+            in the docstring for the histogram method.
 
         tracks: `~numpy.ndarray` (ntracks,6) (optional)
             Array of tracks to plot. Defaults to the
@@ -1100,15 +1117,7 @@ class Scan(ExportableClassMixin):
         if zrange is None:
             zrange = [None, None]
 
-        # Get the requested histogram
-        if quantity == "CHI":
-            xax, yax, arr = self.chi
-        elif quantity == "F2":
-            xax, yax, arr = self.F2
-        elif quantity == "TRACK DENSITY":
-            xax, yax, arr = self.track_density
-        else:
-            xax, yax, arr = self.histogram(axes=axes, tracks=tracks)
+        xax, yax, arr = self.histogram(axes=axes, quantity=quantity, tracks=tracks)
 
         # Set all 0's in the histogram to NaN so they appear as
         # blank white space on the plot
