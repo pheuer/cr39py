@@ -182,13 +182,6 @@ class Axis(ExportableClassMixin):
 
         return ax
 
-    @property
-    def limits(self) -> u.Quantity:
-        """
-        The minimum and maximum values of the axis.
-        """
-        return np.min(self.axis), np.max(self.axis)
-
     def _reset_axis(self):
         """
         Reset the axis to be recalculated if the tracks

@@ -19,12 +19,26 @@ def cr39scan():
     return Scan.from_cpsa(cpsa_path, etch_time=120)
 
 
+def test_from_tracks(cr39scan):
+    tracks = cr39scan.tracks
+
+    scan2 = Scan.from_tracks(tracks, 120)
+
+
 def test_framesize(cr39scan):
+
+    # Set with a float
+    cr39scan.set_framesize("X", 500)
+
     cr39scan.set_framesize("X", 500 * u.um)
 
     assert cr39scan.framesize("X") == 500 * u.um
     assert cr39scan.framesize("Y") == cr39scan.framesize("X")
     assert cr39scan.framesize("XY") == cr39scan.framesize("X")
+
+    # Test on a different axis
+    cr39scan.set_framesize("D", 0.1 * u.um)
+    assert cr39scan.framesize("D") == 0.1 * u.um
 
     with pytest.raises(KeyError):
         cr39scan.framesize("not a valid axis key")
@@ -35,10 +49,16 @@ def test_optimize_xy_framesize(cr39scan):
 
 
 def test_get_selected_tracks(cr39scan):
+
+    # Access selected tracks
+    cr39scan.selected_tracks
     cr39scan.nselected_tracks
 
     cr39scan.current_subset.add_cut(Cut(xmin=0))
     cr39scan.current_subset.add_cut(Cut(cmin=30))
+
+    # Get selected tracks again, forcing it to be reset
+    cr39scan.selected_tracks
 
     # Test with all cuts
     x = cr39scan.current_subset.apply_cuts(cr39scan.tracks)
@@ -69,15 +89,19 @@ def test_subset(cr39scan):
     with pytest.raises(ValueError):
         cr39scan.remove_subset(0)
 
-    # Cannot select subset outside range
-    with pytest.raises(ValueError):
-        cr39scan.remove_subset(1000)
-
     # Select the last tubset
     cr39scan.select_subset(-1)
 
     # Remove the first subset
     cr39scan.remove_subset(0)
+
+    # Cannot select subset outside range
+    with pytest.raises(ValueError):
+        cr39scan.remove_subset(1000)
+
+    # Cannot access subset outside range
+    with pytest.raises(ValueError):
+        cr39scan.select_subset(1000)
 
 
 def test_manipulate_cuts(cr39scan):
@@ -110,8 +134,12 @@ def test_rotate(cr39scan):
     cr39scan.rotate(45)
 
 
-def test_histogram(cr39scan):
-    cr39scan.histogram()
+cases = [None, "CHI", "F2", "TRACK DENSITY"]
+
+
+@pytest.mark.parametrize("quantity", cases)
+def test_histogram(cr39scan, quantity):
+    cr39scan.histogram(quantity=quantity)
 
 
 @pytest.mark.parametrize("fcn_name", ["cutplot", "plot", "focus_plot"])
