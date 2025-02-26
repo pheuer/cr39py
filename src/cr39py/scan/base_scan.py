@@ -182,6 +182,13 @@ class Axis(ExportableClassMixin):
 
         return ax
 
+    @property
+    def limits(self) -> u.Quantity:
+        """
+        The minimum and maximum values of the axis.
+        """
+        return np.min(self.axis), np.max(self.axis)
+
     def _reset_axis(self):
         """
         Reset the axis to be recalculated if the tracks
@@ -659,9 +666,11 @@ class Scan(ExportableClassMixin):
 
         tracks = self.current_subset.apply_cuts(self._tracks)
 
+        # TODO: Remove these lines? I don't think they are necessary now
+        # That axis contains a reference to the parent scan
         # Re-attach the new selected tracks to the axes objects
-        for ax in self._axes.values():
-            ax.tracks = tracks
+        # for ax in self._axes.values():
+        #    ax.tracks = tracks
 
         return tracks
 
@@ -812,6 +821,8 @@ class Scan(ExportableClassMixin):
 
         ax0 = self._axes[axes[0]]
         ax1 = self._axes[axes[1]]
+
+        print(axes, ax0.ind, ax1.ind)
 
         # If creating a histogram like the X,Y,D plots
         if quantity is not None:
