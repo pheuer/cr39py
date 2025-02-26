@@ -160,7 +160,10 @@ def read_cpsa(path: Path) -> TrackData:
             # The x and y pos are relative to the upper right corner
             # of the current frame
 
-            t = np.zeros([fh.hits, 7])
+            # TODO: What is the difference between contrast and avg. contrast?
+            # Which should be the "C" in the analysis?
+
+            t = np.zeros([fh.hits, 6])
             if fh.hits > 0:
 
                 # Diameters (converting to um)
@@ -169,13 +172,15 @@ def read_cpsa(path: Path) -> TrackData:
                 )
 
                 # Ecentricities
-                t[:, 5] = np.fromfile(file, count=fh.hits, dtype="byte")
+                t[:, 4] = np.fromfile(file, count=fh.hits, dtype="byte")
 
                 # Contrast
                 t[:, 3] = np.fromfile(file, count=fh.hits, dtype="byte")
 
                 # Avg Contrast
-                t[:, 4] = np.fromfile(file, count=fh.hits, dtype="byte")
+                # Do not store
+                # t[:, 4] = np.fromfile(file, count=fh.hits, dtype="byte")
+                _ = np.fromfile(file, count=fh.hits, dtype="byte")
 
                 # x position, cm
                 # Positions are relative to the top right of the current
@@ -194,7 +199,7 @@ def read_cpsa(path: Path) -> TrackData:
                 )
 
                 # z position, microns
-                t[:, 6] = fh.zpos * pix_size * 1e-2
+                t[:, 5] = fh.zpos * pix_size * 1e-2
 
             frame_tracks.append(t)
 
@@ -218,7 +223,7 @@ def read_cpsa(path: Path) -> TrackData:
     # 6) z position/lens position (um)
 
     # Re-shape the track data into a list of every track
-    tracks = np.zeros([tot_hits, 7], dtype=np.float32)
+    tracks = np.zeros([tot_hits, 6], dtype=np.float32)
     for i in range(nframes):
         tracks[cum_hits[i] : cum_hits[i + 1], :] = frame_tracks[i]
 
