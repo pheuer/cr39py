@@ -1,7 +1,10 @@
 from pathlib import Path
 
 import h5py
+import matplotlib.pyplot as plt
+import numpy as np
 import yaml
+from matplotlib.patches import Rectangle
 from scipy.interpolate import RegularGridInterpolator
 from scipy.optimize import differential_evolution
 
@@ -169,10 +172,129 @@ class WedgeRangeFilter(Scan):
         return obj
 
     @property
+    def xaxis(self) -> u.Quantity:
+        """
+        X-axis for the WRF scan.
+        """
+        return self._axes["X"].axis
+
+    @property
     def wrf_thickness(self):
-        x = self._axes["X"].axis
-        print(x)
-        return (self._m * x.m_as(u.cm) + self._b) * u.um
+        return (self._m * self.xaxis.m_as(u.cm) + self._b) * u.um
+
+    def set_limits(
+        self,
+        trange: tuple[float] = (100, 1800),
+        xrange: tuple[float | None] | None = None,
+        yrange: tuple[float | None] | None = None,
+        crange: tuple[float | None] = (0, 10),
+        drange: tuple[float | None] | None = None,
+        erange: tuple[float | None] | None = None,
+    ) -> None:
+        """
+        Set limits on the tracks that will be included in the analysis.
+
+        Parameters
+        ----------
+        trange : tuple[float], optional
+            Range of x values to include, specified as a range in
+            the thickness of the filter wedge. Defaults to (100, 1800)
+
+        xrange : tuple[float], optional
+            Range of x values to include. Defaults to None, in which
+            case the ``trange`` will be used. This keyword overrides
+            ``trange``.
+
+        yrange : tuple[float], optional
+            Range of y values to include. The default is to include all
+            y-values.
+
+        crange : tuple[float], optional
+            Range of contrasts to include. The default range is (0,10).
+
+        drange : tuple[float], optional
+            Range of diameters to include. The default range is (10,20).
+
+        erange : tuple[float], optional
+            Range of eccentricities to include. The default range is (0,15).
+
+        """
+        # Clear the current cuts and domain prior to setting new bounds
+        self.current_subset.clear_domain()
+        self.current_subset.clear_cuts()
+
+        # Set the x range
+        if xrange is not None:
+            xmin, xmax = xrange
+        elif trange is not None:
+            xrange = (np.array(trange) - self._b) / self._m
+            xmin, xmax = xrange
+        self._xrange = (xmin, xmax)
+        self._xrange = (
+            np.min(self._axes["X"].axis.m) if xmin is None else xmin,
+            np.max(self._axes["X"].axis.m) if xmax is None else xmax,
+        )
+
+        if yrange is not None:
+            ymin, ymax = yrange
+        else:
+            ymin, ymax = None, None
+        self._yrange = (
+            np.min(self._axes["Y"].axis.m) if ymin is None else ymin,
+            np.max(self._axes["Y"].axis.m) if ymax is None else ymax,
+        )
+
+        self.current_subset.set_domain(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
+        # Now create and add the cuts
+        # Since cuts EXCLUDE tracks, two cuts are required (to exclude tracks above and below the range)
+        # and the min/max of the range are the max/min of those respective cuts.
+        if crange is not None:
+            cmin, cmax = crange
+        else:
+            cmin, cmax = None, None
+        if cmax is not None:
+            self.current_subset.add_cut(cmin=cmax)
+        if cmin is not None:
+            self.current_subset.add_cut(cmax=cmin)
+
+        if drange is not None:
+            dmin, dmax = drange
+        else:
+            dmin, dmax = None, None
+        if dmax is not None:
+            self.current_subset.add_cut(dmin=dmax)
+        if dmin is not None:
+            self.current_subset.add_cut(dmax=dmin)
+
+        if erange is not None:
+            emin, emax = erange
+        else:
+            emin, emax = None, None
+        if emax is not None:
+            self.current_subset.add_cut(emin=emax)
+        if emin is not None:
+            self.current_subset.add_cut(emax=emin)
+
+    def plot_limits(self):
+        """
+        Makes a plot summarizing the applied limits.
+        """
+
+        fig, axarr = plt.subplots(ncols=3, figsize=(12, 3))
+
+        # XY plane w/ domain box
+        ax = axarr[0]
+        self.plot(axes=("X", "Y"), figax=(fig, ax), tracks=self.tracks)
+        print(self._xrange, self._yrange)
+        domain = Rectangle(
+            (self._xrange[0], self._yrange[0]),
+            self._xrange[1] - self._xrange[0],
+            self._yrange[1] - self._yrange[0],
+            edgecolor="red",
+            facecolor="none",
+        )
+        ax.add_patch(domain)
 
 
 if __name__ == "__main__":
@@ -180,3 +302,7 @@ if __name__ == "__main__":
         r"C:\Users\pheu\Box\pheuer\Research\Experiments\CR39\2024_PRadMagRecon-25A\O113530_NDI_WA1769_G156_5.25h_s3_40x.cpsa"
     )
     wrf = WedgeRangeFilter.from_cpsa(test_file)
+
+    wrf.set_limits()
+
+    wrf.plot_limits()
