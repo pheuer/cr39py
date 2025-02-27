@@ -1160,10 +1160,10 @@ class Scan(ExportableClassMixin):
             title = f"{axes[0]}, {axes[1]}, {quantity}"
 
         # Set any None bounds to the extrema of the ranges
-        xrange[0] = np.nanmin(tracks[:, 0]) if xrange[0] is None else xrange[0]
-        xrange[1] = np.nanmax(tracks[:, 0]) if xrange[1] is None else xrange[1]
-        yrange[0] = np.nanmin(tracks[:, 1]) if yrange[0] is None else yrange[0]
-        yrange[1] = np.nanmax(tracks[:, 1]) if yrange[1] is None else yrange[1]
+        xrange[0] = np.nanmin(xax.m) if xrange[0] is None else xrange[0]
+        xrange[1] = np.nanmax(xax.m) if xrange[1] is None else xrange[1]
+        yrange[0] = np.nanmin(yax.m) if yrange[0] is None else yrange[0]
+        yrange[1] = np.nanmax(yax.m) if yrange[1] is None else yrange[1]
         zrange[0] = np.nanmin(arr.m) if zrange[0] is None else zrange[0]
         zrange[1] = np.nanmax(arr.m) if zrange[1] is None else zrange[1]
 

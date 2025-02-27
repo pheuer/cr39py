@@ -72,6 +72,7 @@ skip = '*.ipynb,*.bib'
 ignore-words-list = """
 astroid,
 hax,
+nd,
 vax"""
 
 [tool.coverage.run]
