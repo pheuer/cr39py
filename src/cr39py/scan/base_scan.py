@@ -73,8 +73,12 @@ class Axis(ExportableClassMixin):
         # Framesize is mutable
         self._framesize = None
 
-        # Tracks over which to calculate axes
+        # Object to which this axis belongs
         self._parent_scan = parent_scan
+
+        # Tracks to use to calculate axes
+        # If none, use selected tracks from parent scan
+        self._tracks = None
 
     @property
     def ind(self) -> int:
@@ -97,6 +101,24 @@ class Axis(ExportableClassMixin):
         return self._unit
 
     @property
+    def tracks(self):
+        """
+        Tracks for which the axis is calculated.
+
+        If not explicitly set to a TrackData array,
+        return the selected tracks from the parent scan object.
+        """
+        if self._tracks is None:
+            return self._parent_scan.selected_tracks
+        else:
+            return self._tracks
+
+    @tracks.setter
+    def tracks(self, tracks: TrackData) -> None:
+        self._tracks = tracks
+        self._reset()
+
+    @property
     def default_range(self):
         """
         Default range (min, max, framesize) for this axis.
@@ -117,11 +139,10 @@ class Axis(ExportableClassMixin):
         else:
             # Otherwise, determine a framesize that will result in about
             # 20 tracks per frame
-            tracks = self._parent_scan.selected_tracks
-            ntracks = tracks.shape[0]
+            ntracks = self.tracks.shape[0]
             nbins = int(np.clip(np.sqrt(ntracks) / 20, 20, 200))
-            minval = np.min(tracks[:, self.ind])
-            maxval = np.max(tracks[:, self.ind])
+            minval = np.min(self.tracks[:, self.ind])
+            maxval = np.max(self.tracks[:, self.ind])
             framesize = (maxval - minval) / nbins
 
         return framesize * self.unit
@@ -165,16 +186,15 @@ class Axis(ExportableClassMixin):
         axis : u.Quantity
             Axis array
         """
-        tracks = self._parent_scan.selected_tracks
 
         # Calculate a min and max value for the axis
         minval = self.default_range[0]
         if minval is None:
-            minval = np.min(tracks[:, self.ind])
+            minval = np.min(self.tracks[:, self.ind])
 
         maxval = self.default_range[1]
         if maxval is None:
-            maxval = np.max(tracks[:, self.ind])
+            maxval = np.max(self.tracks[:, self.ind])
 
         ax = np.arange(minval, maxval, self.framesize.m_as(self.unit))
 
@@ -835,12 +855,16 @@ class Scan(ExportableClassMixin):
         if tracks is None:
             tracks = self.selected_tracks
 
-        ax0 = self._axes[axes[0]]
-        ax1 = self._axes[axes[1]]
+        # Make copies of the track objects
+        ax0 = copy.deepcopy(self._axes[axes[0]])
+        ax0.tracks = tracks
+        ax1 = copy.deepcopy(self._axes[axes[1]])
+        ax1.tracks = tracks
 
         # If creating a histogram like the X,Y,D plots
         if quantity is not None:
-            ax2 = self._axes[quantity]
+            ax2 = copy.deepcopy(self._axes[quantity])
+            ax2.tracks = tracks
             weights = tracks[:, ax2.ind]
         else:
             weights = None
