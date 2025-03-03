@@ -43,10 +43,6 @@ class Axis(ExportableClassMixin):
         be None, in which case the range will be automatically determined
         from the track data.
 
-    parent_scan: `~cr39py.scan.base_scan.Scan`
-        The parent scan object to which this axis belongs. Used to access the
-        ``selected_tracks`` property to calculate the axis.
-
     """
 
     _exportable_attributes = ["ind", "_unit", "_default_range", "framesize"]
@@ -56,7 +52,6 @@ class Axis(ExportableClassMixin):
         ind: int = None,
         unit: u.Quantity = None,
         default_range: tuple[float | None] = (None, None, None),
-        parent_scan: "Scan" = None,
     ) -> None:
 
         if ind is None:  # pragma: no cover
@@ -73,13 +68,6 @@ class Axis(ExportableClassMixin):
         # Framesize is mutable
         self._framesize = None
 
-        # Object to which this axis belongs
-        self._parent_scan = parent_scan
-
-        # Tracks to use to calculate axes
-        # If none, use selected tracks from parent scan
-        self._tracks = None
-
     @property
     def ind(self) -> int:
         """The array index for this axis.
@@ -89,6 +77,18 @@ class Axis(ExportableClassMixin):
         index : int
         """
         return self._ind
+
+    @property
+    def name(self) -> str:
+        """
+        Name of this axis.
+
+        Returns
+        -------
+        name : str
+        """
+        axes = "XYDCEZ"
+        return axes[self.ind]
 
     @property
     def unit(self):
@@ -101,24 +101,6 @@ class Axis(ExportableClassMixin):
         return self._unit
 
     @property
-    def tracks(self):
-        """
-        Tracks for which the axis is calculated.
-
-        If not explicitly set to a TrackData array,
-        return the selected tracks from the parent scan object.
-        """
-        if self._tracks is None:
-            return self._parent_scan.selected_tracks
-        else:
-            return self._tracks
-
-    @tracks.setter
-    def tracks(self, tracks: TrackData) -> None:
-        self._tracks = tracks
-        self._reset()
-
-    @property
     def default_range(self):
         """
         Default range (min, max, framesize) for this axis.
@@ -127,10 +109,36 @@ class Axis(ExportableClassMixin):
         """
         return self._default_range
 
-    @cached_property
-    def _default_framesize(self) -> u.Quantity:
+    @property
+    def framesize(self) -> float:
+        """
+        Frame (bin) size for this axis.
+
+        Returns
+        -------
+        framesize : float
+            Frame size
+        """
+        return self._framesize
+
+    @framesize.setter
+    def framesize(self, framesize: float) -> None:
+        """
+        Set the framesize for this axis.
+
+        Parameters
+        ----------
+        framesize : float
+            New framesize
+        """
+        self._framesize = framesize
+
+    def _set_default_framesize(self, tracks: TrackData) -> None:
         """
         Calculates an initial framesize based on the selected tracks.
+
+        This function is called when a scan is first loaded to generate
+        a reasonable first guess frame size for each axis.
         """
         # If a default framesize was specified, return that
         default_framesize = self.default_range[2]
@@ -139,84 +147,66 @@ class Axis(ExportableClassMixin):
         else:
             # Otherwise, determine a framesize that will result in about
             # 20 tracks per frame
-            ntracks = self.tracks.shape[0]
+            ntracks = tracks.shape[0]
             nbins = int(np.clip(np.sqrt(ntracks) / 20, 20, 200))
-            minval = np.min(self.tracks[:, self.ind])
-            maxval = np.max(self.tracks[:, self.ind])
+            minval = np.min(tracks[:, self.ind])
+            maxval = np.max(tracks[:, self.ind])
             framesize = (maxval - minval) / nbins
 
-        return framesize * self.unit
+        self.framesize = framesize
 
-    def _reset_default_framesize(self) -> None:
-        """Resets the default framesize if the tracks change."""
-        if hasattr(self, "_default_framesize"):
-            del self._default_framesize
+    def axis(
+        self,
+        range: tuple[float | None, float | None] | None = None,
+        tracks: TrackData | None = None,
+    ) -> u.Quantity:
+        """
+        Calculate an axis over a given range using the set framesize.
 
-    @property
-    def framesize(self) -> u.Quantity:
-        """Frame (bin) size for this axis.
+        Keywords have the following priority
 
-        If framesize property is set, returns that value,
-        otherwise returns a default framesize estimated from
-        the current tracks.
+        1) Range
+        2) tracks: range will be calculated as the min and max of the tracks.
+        3) Default range
+
+        Parameters
+        ----------
+        range : tuple(float|None, float|None), optional
+            A tuple of (min, max) values for the axis.
+
+        tracks : np.ndarray, optional
+            Tracks data to use for the axis.
 
         Returns
         -------
-        u.Quantity
-            _description_
-        """
-        if self._framesize is not None:
-            return self._framesize
-        else:
-            return self._default_framesize
-
-    @framesize.setter
-    def framesize(self, framesize: u.Quantity) -> None:
-        self._framesize = framesize
-        self._reset_axis()
-
-    @cached_property
-    def axis(self) -> u.Quantity:
-        """
-        Axis calculated for the array of tracks.
-
-        Returns
-        -------
-
         axis : u.Quantity
             Axis array
         """
+        if range is None:
+            range = (None, None)
 
-        # Calculate a min and max value for the axis
-        minval = self.default_range[0]
-        if minval is None:
-            minval = np.min(self.tracks[:, self.ind])
+        if range[0] is not None:
+            minval = range[0]
+        elif tracks is not None:
+            minval = np.min(tracks[:, self.ind])
+        else:
+            raise ValueError(
+                f"No range provided, no tracks, and no default range set for {self.name} min."
+            )
 
-        maxval = self.default_range[1]
-        if maxval is None:
-            maxval = np.max(self.tracks[:, self.ind])
+        if range[1] is not None:
+            maxval = range[1]
+        elif tracks is not None:
+            maxval = np.max(tracks[:, self.ind])
+        else:
+            raise ValueError(
+                f"No range provided, no tracks, and no default range set for {self.name} max."
+            )
 
-        ax = np.arange(minval, maxval, self.framesize.m_as(self.unit))
-
+        ax = np.arange(minval, maxval, self.framesize)
         ax *= self.unit
 
         return ax
-
-    def _reset_axis(self):
-        """
-        Reset the axis to be recalculated if the tracks
-        or the framesize has changed.
-        """
-        if hasattr(self, "axis"):
-            del self.axis
-
-    def _reset(self):
-        """
-        Reset the axis to be recalculated if the tracks
-        have changed.
-        """
-        self._reset_default_framesize()
-        self._reset_axis()
 
 
 class Scan(ExportableClassMixin):
@@ -241,24 +231,13 @@ class Scan(ExportableClassMixin):
     ]
 
     def __init__(self) -> None:
-
         self._axes = {
-            "X": Axis(
-                ind=0, unit=u.cm, default_range=(None, None, None), parent_scan=self
-            ),
-            "Y": Axis(
-                ind=1, unit=u.cm, default_range=(None, None, None), parent_scan=self
-            ),
-            "D": Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5), parent_scan=self),
-            "C": Axis(
-                ind=3, unit=u.dimensionless, default_range=(0, 80, 1), parent_scan=self
-            ),
-            "E": Axis(
-                ind=4, unit=u.dimensionless, default_range=(0, 50, 1), parent_scan=self
-            ),
-            "Z": Axis(
-                ind=5, unit=u.um, default_range=(None, None, None), parent_scan=self
-            ),
+            "X": Axis(ind=0, unit=u.cm, default_range=(None, None, None)),
+            "Y": Axis(ind=1, unit=u.cm, default_range=(None, None, None)),
+            "D": Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5)),
+            "C": Axis(ind=3, unit=u.dimensionless, default_range=(0, 80, 1)),
+            "E": Axis(ind=4, unit=u.dimensionless, default_range=(0, 50, 1)),
+            "Z": Axis(ind=5, unit=u.um, default_range=(None, None, None)),
         }
 
         self._current_subset_index = 0
@@ -343,6 +322,7 @@ class Scan(ExportableClassMixin):
         metadata : dict
             Dictionary of metadata to attach to the Scan object.
         """
+
         obj = cls()
 
         if metadata is None:
@@ -351,6 +331,10 @@ class Scan(ExportableClassMixin):
         obj._etch_time = etch_time * u.min
         obj._tracks = tracks
         obj.metadata = metadata
+
+        # Find an initial framesize for each axis based on the provided tracks
+        for name in obj._axes:
+            obj._axes[name]._set_default_framesize(tracks)
 
         return obj
 
@@ -372,7 +356,6 @@ class Scan(ExportableClassMixin):
             Etch time in minutes.
 
         """
-
         # If the etch time is not provided, attempt to automatically extract
         # from the CPSA filename
         if etch_time is None:
@@ -406,18 +389,17 @@ class Scan(ExportableClassMixin):
             Name of the axis to change.
 
         framesize : float | u.Quantity
-            New framesize
+            New framesize. If no units are provided, units
+            are assume to be those of the axis being changed.
 
         """
 
+        if isinstance(framesize, u.Quantity):
+            framesize = float(framesize.m_as(self._axes[ax_key].unit))
         # If no unit is supplied, assume the
         # default units for this axis
-        if not isinstance(framesize, u.Quantity):
-            framesize *= self._axes[ax_key].unit
 
-        if ax_key in ["X", "Y"]:
-            self.set_framesize("XY", framesize)
-        elif ax_key == "XY":
+        if str(ax_key).upper() in ["X", "Y", "XY"]:
             self._axes["X"].framesize = framesize
             self._axes["Y"].framesize = framesize
         else:
@@ -440,9 +422,9 @@ class Scan(ExportableClassMixin):
             Framesize of the requested axis.
         """
         if ax_key == "XY":
-            return self._axes["X"].framesize
+            return self._axes["X"].framesize * self._axes[ax_key].unit
         elif ax_key in self._axes:
-            return self._axes[ax_key].framesize
+            return self._axes[ax_key].framesize * self._axes[ax_key].unit
         else:
             raise KeyError(f"Axis name not recognized: {ax_key}")
 
@@ -665,9 +647,6 @@ class Scan(ExportableClassMixin):
         if hasattr(self, "_selected_tracks"):
             del self._selected_tracks
 
-        for ax in self._axes.values():
-            ax._reset()
-
     @cached_property
     def _selected_tracks(self) -> TrackData:
         """
@@ -680,12 +659,6 @@ class Scan(ExportableClassMixin):
         self._cached_subset_hash = hash(self.current_subset)
 
         tracks = self.current_subset.apply_cuts(self._tracks)
-
-        # TODO: Remove these lines? I don't think they are necessary now
-        # That axis contains a reference to the parent scan
-        # Re-attach the new selected tracks to the axes objects
-        # for ax in self._axes.values():
-        #    ax.tracks = tracks
 
         return tracks
 
@@ -789,9 +762,11 @@ class Scan(ExportableClassMixin):
 
     def histogram(
         self,
-        axes: tuple[str] = ("X", "Y"),
+        axes: tuple[str] = "XY",
         quantity: str | None = None,
         tracks: np.ndarray | None = None,
+        xlim: tuple[float, float] | None = None,
+        ylim: tuple[float, float] | None = None,
     ) -> tuple[np.ndarray]:
         """
         Create a histogram of the currently selected track data
@@ -813,8 +788,9 @@ class Scan(ExportableClassMixin):
         Parameters
         ---------
 
-        axes : tuple(str), optional
-            The axes of the histogram.  The default is ('X', 'Y')
+        axes : str, optional
+            The axes of the histogram, as a two character string.
+            The default is "XY".
 
         quantity: str, optional
             The quantity to plot. Default is to plot the number
@@ -823,6 +799,14 @@ class Scan(ExportableClassMixin):
         tracks : np.ndarray (optional)
             Tracks data from which to make the histogram. Default
             is the currently selected track data.
+
+        xlim : tuple (min,max), None
+            Range of the horizontal axis. Defaults to the
+            default range for this axis.
+
+        ylim : tuple (min,max), None
+            Range of the vertical axis. Defaults to the
+            default range for this axis.
 
         Returns
         -------
@@ -856,24 +840,24 @@ class Scan(ExportableClassMixin):
             tracks = self.selected_tracks
 
         # Make copies of the track objects
-        ax0 = copy.deepcopy(self._axes[axes[0]])
-        ax0.tracks = tracks
-        ax1 = copy.deepcopy(self._axes[axes[1]])
-        ax1.tracks = tracks
+        ax0 = self._axes[axes[0]]
+        ax1 = self._axes[axes[1]]
+
+        hax = ax0.axis(range=xlim, tracks=tracks)
+        vax = ax1.axis(range=ylim, tracks=tracks)
 
         # If creating a histogram like the X,Y,D plots
         if quantity is not None:
-            ax2 = copy.deepcopy(self._axes[quantity])
-            ax2.tracks = tracks
+            ax2 = self._axes[quantity]
             weights = tracks[:, ax2.ind]
         else:
             weights = None
 
         rng = [
-            (np.min(ax0.axis.m), np.max(ax0.axis.m)),
-            (np.min(ax1.axis.m), np.max(ax1.axis.m)),
+            (np.min(hax.m), np.max(hax.m)),
+            (np.min(vax.m), np.max(vax.m)),
         ]
-        bins = [ax0.axis.size, ax1.axis.size]
+        bins = [hax.size, vax.size]
 
         arr = (
             histogram2d(
@@ -898,11 +882,12 @@ class Scan(ExportableClassMixin):
             arr[nz] = arr[nz] / arr_uw[nz]
             arr = arr * ax2.unit
 
-        return ax0.axis, ax1.axis, arr
+        return hax, vax, arr
 
     @property
     def chi(self) -> tuple[np.ndarray]:
-        """The Zylstra overlap parameter ``chi`` for each cell.
+        """
+        The Zylstra overlap parameter ``chi`` for each cell.
 
         As defined in :cite:t:`Zylstra2012new`.
 
@@ -923,13 +908,9 @@ class Scan(ExportableClassMixin):
         x, y, ntracks = self.histogram(axes=("X", "Y"))
         x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
 
-        chi = (
-            ntracks
-            / self._axes["X"].framesize
-            / self._axes["Y"].framesize
-            * np.pi
-            * D**2
-        ).to(u.dimensionless)
+        area = self._axes["X"].framesize * self._axes["Y"].framesize
+
+        chi = (ntracks / area * np.pi * D**2).to(u.dimensionless)
 
         return x, y, chi
 
@@ -1055,12 +1036,13 @@ class Scan(ExportableClassMixin):
 
     def plot(
         self,
-        axes: tuple[str] | None = None,
+        axes: str | None = None,
         quantity: str | None = None,
         tracks: TrackData | None = None,
-        xrange: Sequence[float, None] | None = None,
-        yrange: Sequence[float, None] | None = None,
-        zrange: Sequence[float, None] | None = None,
+        xlim: Sequence[float, None] | None = None,
+        ylim: Sequence[float, None] | None = None,
+        zlim: Sequence[float, None] | None = None,
+        use_default_ranges=False,
         log: bool = False,
         figax=None,
         show=True,
@@ -1071,9 +1053,9 @@ class Scan(ExportableClassMixin):
         Parameters
         ----------
 
-        axes: tuple of str, optional
-            Sets which axes to plot. If two axes are provided,
-            a histogram of tracks will be made. Default is ('X','Y')
+        axes: str, optional
+            Sets which axes to plot, as a two-character string.
+            Default is "XY".
 
         quantity: str | None
             Sets which quantity to plot. The default is None, which will
@@ -1086,20 +1068,25 @@ class Scan(ExportableClassMixin):
             Array of tracks to plot. Defaults to the
             currently selected tracks.
 
-        xrange: Sequence[float,None] (optional)
+        xlim: Sequence[float,None] (optional)
             Limits for the horizontal axis. Setting either value to
             None will use the minimum or maximum of the data range
             for that value. Default is to plot the full data range.
 
-        yrange: Sequence[float,None] (optional)
+        ylim: Sequence[float,None] (optional)
             Limits for the vertical axis. Setting either value to
             None will use the minimum or maximum of the data range
             for that value. Default is to plot the full data range.
 
-        zrange: Sequence[float,None] (optional)
+        zlim: Sequence[float,None] (optional)
             Limits for the plotted quantity. Setting either value to
             None will use the minimum or maximum of the data range
             for that value. Default is to plot the full data range.
+
+        use_default_ranges: bool, optional
+            If True, if no ranges are provided for an axis, use
+            default ranges (if not None) before using the full range.
+            Default is False.
 
         log : bool (optional)
             If ``True``, plot the log of the quantity.
@@ -1137,16 +1124,11 @@ class Scan(ExportableClassMixin):
             ax = fig.add_subplot()
 
         if axes is None:
-            axes = ("X", "Y")
+            axes = "XY"
 
-        if xrange is None:
-            xrange = [None, None]
-        if yrange is None:
-            yrange = [None, None]
-        if zrange is None:
-            zrange = [None, None]
-
-        xax, yax, arr = self.histogram(axes=axes, quantity=quantity, tracks=tracks)
+        xax, yax, arr = self.histogram(
+            axes=axes, quantity=quantity, tracks=tracks, xlim=xlim, ylim=ylim
+        )
 
         # Set all 0's in the histogram to NaN so they appear as
         # blank white space on the plot
@@ -1159,13 +1141,27 @@ class Scan(ExportableClassMixin):
             ztitle = quantity
             title = f"{axes[0]}, {axes[1]}, {quantity}"
 
-        # Set any None bounds to the extrema of the ranges
-        xrange[0] = np.nanmin(xax.m) if xrange[0] is None else xrange[0]
-        xrange[1] = np.nanmax(xax.m) if xrange[1] is None else xrange[1]
-        yrange[0] = np.nanmin(yax.m) if yrange[0] is None else yrange[0]
-        yrange[1] = np.nanmax(yax.m) if yrange[1] is None else yrange[1]
-        zrange[0] = np.nanmin(arr.m) if zrange[0] is None else zrange[0]
-        zrange[1] = np.nanmax(arr.m) if zrange[1] is None else zrange[1]
+        # Iterate through the axes and make decisions about the limits
+        limits = [xlim, ylim, zlim]
+        for i in range(len(limits)):
+            # Skip zlim if quantity is None
+            if i == 2 and quantity is None:
+                continue
+
+            axname = axes[i] if i < 2 else quantity
+            axobj = self._axes[axname]
+            axis = [xax, yax, arr][i]
+            if limits[i] is None:
+                limits[i] = [None, None]
+
+            if limits[i][0] is None and use_default_ranges:
+                limits[i][0] = axobj.default_range[0]
+            limits[i][0] = np.nanmin(axis.m) if limits[i][0] is None else limits[i][0]
+
+            if limits[i][1] is None and use_default_ranges:
+                limits[i][1] = axobj.default_range[1]
+            limits[i][1] = np.nanmax(axis.m) if limits[i][1] is None else limits[i][1]
+        xlim, ylim, zlim = limits
 
         # Apply log transform if requested
         if log:
@@ -1178,8 +1174,8 @@ class Scan(ExportableClassMixin):
         if axes == ("X", "Y"):
             ax.set_aspect("equal")
 
-        ax.set_xlim(*xrange)
-        ax.set_ylim(*yrange)
+        ax.set_xlim(*xlim)
+        ax.set_ylim(*ylim)
         ax.set_xlabel(axes[0], fontsize=fontsize)
         ax.set_ylabel(axes[1], fontsize=fontsize)
         ax.set_title(title, fontsize=fontsize)
@@ -1246,8 +1242,8 @@ class Scan(ExportableClassMixin):
             axes=("X", "Y"),
             show=False,
             figax=(fig, ax),
-            xrange=self.current_subset.domain.xrange,
-            yrange=self.current_subset.domain.yrange,
+            xlim=self.current_subset.domain.xrange,
+            ylim=self.current_subset.domain.yrange,
             tracks=tracks,
         )
 
@@ -1258,8 +1254,8 @@ class Scan(ExportableClassMixin):
             show=False,
             figax=(fig, ax),
             log=True,
-            xrange=self.current_subset.domain.drange,
-            yrange=self.current_subset.domain.crange,
+            xlim=self.current_subset.domain.drange,
+            ylim=self.current_subset.domain.crange,
             tracks=tracks,
         )
 
@@ -1270,9 +1266,9 @@ class Scan(ExportableClassMixin):
             quantity="D",
             show=False,
             figax=(fig, ax),
-            xrange=self.current_subset.domain.xrange,
-            yrange=self.current_subset.domain.yrange,
-            zrange=self.current_subset.domain.drange,
+            xlim=self.current_subset.domain.xrange,
+            ylim=self.current_subset.domain.yrange,
+            zlim=self.current_subset.domain.drange,
             tracks=tracks,
         )
 
@@ -1283,8 +1279,8 @@ class Scan(ExportableClassMixin):
             show=False,
             figax=(fig, ax),
             log=True,
-            xrange=self.current_subset.domain.drange,
-            yrange=self.current_subset.domain.erange,
+            xlim=self.current_subset.domain.drange,
+            ylim=self.current_subset.domain.erange,
             tracks=tracks,
         )
 

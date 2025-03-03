@@ -49,7 +49,7 @@ def synthetic_wrf_data(
     params: np.ndarray,
     xaxis: np.ndarray,
     daxis: np.ndarray,
-    wrf_calib: np.ndarray,
+    wrf_calibration: np.ndarray,
     remove_ranging_interpolator=None,
 ) -> np.ndarray:
     """
@@ -70,14 +70,8 @@ def synthetic_wrf_data(
     daxis : np.ndarray
         Diameter axis, in um
 
-    wrf_calib: tuple(float)
+    wrf_calibration: tuple(float)
         WRF slope and offset calibration coefficients (m,b).
-
-    remove_ranging_interpolator : RegularGridInterpolator, optional
-        Interpolator for translating E_in( (E_out, wrf_thickness)).
-        If an interpolator is not provided, one will be created.
-        Providing an already-loaded interpolator allows greatly speeds
-        up calls to this function, necessary for fitting.
 
     Returns
     -------
@@ -85,8 +79,7 @@ def synthetic_wrf_data(
         Synthetic data (arbitrary units) in X,D space.
     """
 
-    if remove_ranging_interpolator is None:
-        remove_ranging_interpolator = _remove_ranging_interpolator()
+    remove_ranging_interpolator = _remove_ranging_interpolator()
 
     emean, estd, c, dmax = params
 
@@ -97,7 +90,7 @@ def synthetic_wrf_data(
     ein_axis = model.track_energy(daxis)
 
     # Calculate the WRF thickness
-    m, b = wrf_calib
+    m, b = wrf_calibration
     wrf_thickness = m * xaxis + b
 
     # Translate that E_in axis to an E_out value at every thickness
@@ -168,6 +161,13 @@ class WedgeRangeFilter(Scan):
         # WRF calibration coefficients
         self._m = None
         self._b = None
+
+    @property
+    def wrf_calibration(self) -> tuple[float]:
+        """
+        WRF calibration coefficients (m,b).
+        """
+        return self._m, self._b
 
     @property
     def _wrf_calib_data(self):
@@ -267,6 +267,7 @@ class WedgeRangeFilter(Scan):
             If no value is supplied, the filename will be searched for a valid WRF ID code.
 
         """
+
         obj = super().from_cpsa(path, etch_time=etch_time)
 
         if wrf is None:
@@ -293,7 +294,7 @@ class WedgeRangeFilter(Scan):
         """
         X-axis for the WRF scan.
         """
-        return self._axes["X"].axis
+        return self._axes["X"].axis(tracks=self.selected_tracks)
 
     @property
     def wrf_thickness(self):
@@ -315,6 +316,8 @@ class WedgeRangeFilter(Scan):
     ) -> None:
         """
         Set limits on the tracks that will be included in the analysis.
+
+        These limits are implemented on the domain of the subset.
 
         Parameters
         ----------
@@ -339,9 +342,6 @@ class WedgeRangeFilter(Scan):
 
         erange : tuple[float], optional
             Range of eccentricities to include. The default range is (0,15).
-
-        plot : bool
-            If true, make summary plots as cuts are applied
 
         """
         # Clear the current cuts and domain prior to setting new bounds
@@ -387,59 +387,6 @@ class WedgeRangeFilter(Scan):
             emax=emax,
         )
 
-        """
-        # First set the contrast range to eliminate noise
-
-        if cmax is not None:
-            self.current_subset.add_cut(cmin=cmax)
-        if cmin is not None:
-            self.current_subset.add_cut(cmax=cmin)
-        self._crange = (
-            np.min(self._tracks[:, 3]) if cmin is None else cmin,
-            np.max(self._tracks[:, 3]) if cmax is None else cmax,
-        )
-
-        # Set the x range
-
-        # Save the bounds for plotting
-        self._xrange = (
-            np.min(self._tracks[:, 0]) if xmin is None else xmin,
-            np.max(self._tracks[:, 0]) if xmax is None else xmax,
-        )
-
-
-        self._yrange = (
-            np.min(self._tracks[:, 1]) if ymin is None else ymin,
-            np.max(self._tracks[:, 1]) if ymax is None else ymax,
-        )
-
-
-
-        # Now create and add the cuts
-        # Since cuts EXCLUDE tracks, two cuts are required (to exclude tracks above and below the range)
-        # and the min/max of the range are the max/min of those respective cuts.
-
-
-        if dmax is not None:
-            self.current_subset.add_cut(dmin=dmax)
-        if dmin is not None:
-            self.current_subset.add_cut(dmax=dmin)
-        self._drange = (
-            np.min(self._tracks[:, 2]) if dmin is None else dmin,
-            np.max(self._tracks[:, 2]) if dmax is None else dmax,
-        )
-
-
-        if emax is not None:
-            self.current_subset.add_cut(emin=emax)
-        if emin is not None:
-            self.current_subset.add_cut(emax=emin)
-        self._erange = (
-            np.min(self._tracks[:, 4]) if emin is None else emin,
-            np.max(self._tracks[:, 4]) if emax is None else emax,
-        )
-        """
-
     def fit(
         self,
         guess: tuple[float] = (15, 0.1, 1, 20),
@@ -473,18 +420,14 @@ class WedgeRangeFilter(Scan):
             Best fit results for each parameter
         """
 
-        remove_ranging_interp = _remove_ranging_interpolator()
         xax, dax, data = self.histogram(axes=("X", "D"))
-
-        print(dax)
 
         def minimization_fcn(params):
             synthetic = synthetic_wrf_data(
                 params,
                 xax.m,
                 dax.m,
-                (self._m, self._b),
-                remove_ranging_interpolator=remove_ranging_interp,
+                self.wrf_calibration,
             )
             return wrf_objective_function(synthetic, data, return_sum=True)
 
@@ -495,8 +438,7 @@ class WedgeRangeFilter(Scan):
                 res.x,
                 xax.m,
                 dax.m,
-                (self._m, self._b),
-                remove_ranging_interpolator=remove_ranging_interp,
+                self.wrf_calibration,
             )
 
             emean, estd, c, dmax = res.x
