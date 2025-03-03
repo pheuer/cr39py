@@ -1,3 +1,4 @@
+from functools import cache
 from pathlib import Path
 
 import h5py
@@ -14,6 +15,7 @@ from cr39py.models.response import CParameterModel
 from cr39py.scan.base_scan import Scan
 
 
+@cache
 def _remove_ranging_interpolator():
     """
     Returns an interpolator for incident proton energy as a function of
@@ -34,7 +36,7 @@ def _remove_ranging_interpolator():
     with h5py.File(data_file, "r") as f:
         thickness = f["thickness"][:]  # um
         E_out = f["E_out"][:]  # MeV
-        E_in = f["E_in"][:, :]
+        E_in = f["E_in"][:, :]  # MeV
 
     E_in_interp = RegularGridInterpolator(
         (thickness, E_out), E_in, bounds_error=False, method="cubic"
@@ -63,10 +65,10 @@ def synthetic_wrf_data(
         - dmax parameter for the C-parameter response model.
 
     xaxis : np.ndarray
-        X-axis
+        X-axis, in cm
 
     daxis : np.ndarray
-        Diameter axis
+        Diameter axis, in um
 
     wrf_calib: tuple(float)
         WRF slope and offset calibration coefficients (m,b).
@@ -303,7 +305,7 @@ class WedgeRangeFilter(Scan):
     # TODO: Framesizes also need to be set based on fluences...
     def set_limits(
         self,
-        trange: tuple[float] = (100, 1800),
+        trange: tuple[float] = (400, 1800),
         xrange: tuple[float | None] | None = None,
         yrange: tuple[float | None] | None = None,
         drange: tuple[float | None] | None = (10, 20),
@@ -346,11 +348,48 @@ class WedgeRangeFilter(Scan):
         self.current_subset.clear_domain()
         self.current_subset.clear_cuts()
 
-        # First set the contrast range to eliminate noise
+        if xrange is not None:
+            xmin, xmax = xrange
+        elif trange is not None:
+            xrange = (np.array(trange) - self._b) / self._m
+            xmin, xmax = xrange
+
+        if yrange is not None:
+            ymin, ymax = yrange
+        else:
+            ymin, ymax = None, None
+
         if crange is not None:
             cmin, cmax = crange
         else:
             cmin, cmax = None, None
+
+        if drange is not None:
+            dmin, dmax = drange
+        else:
+            dmin, dmax = None, None
+
+        if erange is not None:
+            emin, emax = erange
+        else:
+            emin, emax = None, None
+
+        self.current_subset.set_domain(
+            xmin=xmin,
+            xmax=xmax,
+            ymin=ymin,
+            ymax=ymax,
+            cmin=cmin,
+            cmax=cmax,
+            dmin=dmin,
+            dmax=dmax,
+            emin=emin,
+            emax=emax,
+        )
+
+        """
+        # First set the contrast range to eliminate noise
+
         if cmax is not None:
             self.current_subset.add_cut(cmin=cmax)
         if cmin is not None:
@@ -361,36 +400,26 @@ class WedgeRangeFilter(Scan):
         )
 
         # Set the x range
-        if xrange is not None:
-            xmin, xmax = xrange
-        elif trange is not None:
-            xrange = (np.array(trange) - self._b) / self._m
-            xmin, xmax = xrange
+
         # Save the bounds for plotting
         self._xrange = (
             np.min(self._tracks[:, 0]) if xmin is None else xmin,
             np.max(self._tracks[:, 0]) if xmax is None else xmax,
         )
 
-        if yrange is not None:
-            ymin, ymax = yrange
-        else:
-            ymin, ymax = None, None
+
         self._yrange = (
             np.min(self._tracks[:, 1]) if ymin is None else ymin,
             np.max(self._tracks[:, 1]) if ymax is None else ymax,
         )
 
-        self.current_subset.set_domain(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
 
         # Now create and add the cuts
         # Since cuts EXCLUDE tracks, two cuts are required (to exclude tracks above and below the range)
         # and the min/max of the range are the max/min of those respective cuts.
 
-        if drange is not None:
-            dmin, dmax = drange
-        else:
-            dmin, dmax = None, None
+
         if dmax is not None:
             self.current_subset.add_cut(dmin=dmax)
         if dmin is not None:
@@ -400,10 +429,7 @@ class WedgeRangeFilter(Scan):
             np.max(self._tracks[:, 2]) if dmax is None else dmax,
         )
 
-        if erange is not None:
-            emin, emax = erange
-        else:
-            emin, emax = None, None
+
         if emax is not None:
             self.current_subset.add_cut(emin=emax)
         if emin is not None:
@@ -412,6 +438,7 @@ class WedgeRangeFilter(Scan):
             np.min(self._tracks[:, 4]) if emin is None else emin,
             np.max(self._tracks[:, 4]) if emax is None else emax,
         )
+        """
 
     def fit(
         self,
@@ -449,11 +476,13 @@ class WedgeRangeFilter(Scan):
         remove_ranging_interp = _remove_ranging_interpolator()
         xax, dax, data = self.histogram(axes=("X", "D"))
 
+        print(dax)
+
         def minimization_fcn(params):
             synthetic = synthetic_wrf_data(
                 params,
-                self.axes["X"].axis.m,
-                self.axes["D"].axis.m,
+                xax.m,
+                dax.m,
                 (self._m, self._b),
                 remove_ranging_interpolator=remove_ranging_interp,
             )
@@ -464,8 +493,8 @@ class WedgeRangeFilter(Scan):
         if plot:
             synthetic_data = synthetic_wrf_data(
                 res.x,
-                self.axes["X"].axis.m,
-                self.axes["D"].axis.m,
+                xax.m,
+                dax.m,
                 (self._m, self._b),
                 remove_ranging_interpolator=remove_ranging_interp,
             )
