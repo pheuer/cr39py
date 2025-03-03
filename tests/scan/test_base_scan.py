@@ -26,13 +26,13 @@ def test_from_tracks(cr39scan):
 
 
 def test_framesize(cr39scan):
-
     # Set with a float
-    cr39scan.set_framesize("X", 500)
+    cr39scan.set_framesize("X", 0.5 * u.cm)
+    assert cr39scan.framesize("X") == 0.5 * u.cm
 
-    cr39scan.set_framesize("X", 500 * u.um)
+    cr39scan.set_framesize("X", 0.1)
+    assert cr39scan.framesize("X") == 0.1 * u.cm
 
-    assert cr39scan.framesize("X") == 500 * u.um
     assert cr39scan.framesize("Y") == cr39scan.framesize("X")
     assert cr39scan.framesize("XY") == cr39scan.framesize("X")
 

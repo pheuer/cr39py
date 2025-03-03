@@ -393,17 +393,21 @@ class Scan(ExportableClassMixin):
             are assume to be those of the axis being changed.
 
         """
+        if ax_key.upper() in ["X", "Y", "XY"]:
+            _ax = "X"
+        else:
+            _ax = ax_key
 
         if isinstance(framesize, u.Quantity):
-            framesize = float(framesize.m_as(self._axes[ax_key].unit))
+            framesize = float(framesize.m_as(self._axes[_ax].unit))
         # If no unit is supplied, assume the
         # default units for this axis
 
-        if str(ax_key).upper() in ["X", "Y", "XY"]:
+        if _ax == "X":
             self._axes["X"].framesize = framesize
             self._axes["Y"].framesize = framesize
         else:
-            self._axes[ax_key].framesize = framesize
+            self._axes[_ax].framesize = framesize
 
     def framesize(self, ax_key: str = "XY") -> u.Quantity:
         """
@@ -422,7 +426,7 @@ class Scan(ExportableClassMixin):
             Framesize of the requested axis.
         """
         if ax_key == "XY":
-            return self._axes["X"].framesize * self._axes[ax_key].unit
+            return self._axes["X"].framesize * self._axes["X"].unit
         elif ax_key in self._axes:
             return self._axes[ax_key].framesize * self._axes[ax_key].unit
         else:
@@ -443,7 +447,7 @@ class Scan(ExportableClassMixin):
         """
 
         # initialize with current framesize
-        framesize = self._axes["X"].framesize
+        framesize = self.framesize("X")
 
         # Estimate the ideal framesize so that the median bin has some
         # number of tracks in it
@@ -905,10 +909,10 @@ class Scan(ExportableClassMixin):
         chi : `~np.ndarray`
             Histogram of chi for each cell
         """
-        x, y, ntracks = self.histogram(axes=("X", "Y"))
-        x, y, D = self.histogram(axes=("X", "Y"), quantity="D")
+        x, y, ntracks = self.histogram(axes="XY")
+        x, y, D = self.histogram(axes="XY", quantity="D")
 
-        area = self._axes["X"].framesize * self._axes["Y"].framesize
+        area = self.framesize("X") * self.framesize("Y")
 
         chi = (ntracks / area * np.pi * D**2).to(u.dimensionless)
 
@@ -974,9 +978,9 @@ class Scan(ExportableClassMixin):
             Histogram of track density for each cell.
         """
 
-        x, y, ntracks = self.histogram(axes=("X", "Y"))
+        x, y, ntracks = self.histogram(axes="XY")
 
-        cell_area = (self.axes["X"].framesize * self.axes["Y"].framesize).m_as(u.cm**2)
+        cell_area = (self.framesize("X") * self.framesize("Y")).m_as(u.cm**2)
         track_density = ntracks / cell_area
 
         return x, y, track_density
@@ -1307,10 +1311,11 @@ class Scan(ExportableClassMixin):
         fig, ax = plt.subplots()
 
         self.plot(
-            axes=("X", "Y", "Z"),
+            axes="XY",
+            quantity="Z",
             figax=(fig, ax),
-            xrange=self.current_subset.domain.xrange,
-            yrange=self.current_subset.domain.yrange,
+            xlim=self.current_subset.domain.xrange,
+            ylim=self.current_subset.domain.yrange,
         )
 
         if show:
