@@ -7,7 +7,7 @@ import numpy as np
 import yaml
 from matplotlib.patches import Rectangle
 from scipy.interpolate import RegularGridInterpolator
-from scipy.optimize import differential_evolution
+from scipy.optimize import least_squares
 
 from cr39py.core.data import data_dir
 from cr39py.core.units import u
@@ -49,8 +49,8 @@ def synthetic_wrf_data(
     params: np.ndarray,
     xaxis: np.ndarray,
     daxis: np.ndarray,
+    dmax: float,
     wrf_calibration: np.ndarray,
-    remove_ranging_interpolator=None,
 ) -> np.ndarray:
     """
     Creates synthetic 2D WRF data (in X,D space).
@@ -62,13 +62,15 @@ def synthetic_wrf_data(
         - Mean energy of Gaussian particle energy distribution.
         - Standard deviation of the Gaussian particle energy distribution.
         - C-parameter for the C-parameter response model.
-        - dmax parameter for the C-parameter response model.
 
     xaxis : np.ndarray
         X-axis, in cm
 
     daxis : np.ndarray
         Diameter axis, in um
+
+    dmax : float
+        Dmax parameter in um
 
     wrf_calibration: tuple(float)
         WRF slope and offset calibration coefficients (m,b).
@@ -81,7 +83,7 @@ def synthetic_wrf_data(
 
     remove_ranging_interpolator = _remove_ranging_interpolator()
 
-    emean, estd, c, dmax = params
+    emean, estd, c = params
 
     # Convert the track diameter axis from the scan to track energy
     model = CParameterModel(c, dmax)
@@ -99,6 +101,7 @@ def synthetic_wrf_data(
 
     # Use those E_in values with the distribution to create a synthetic image
     synthetic_data = np.exp(-((emean - eout_axis) ** 2) / 2 / estd**2)
+    # synthetic_data = synthetic_data /np.nanmax(synthetic_data)
 
     return synthetic_data
 
@@ -162,12 +165,45 @@ class WedgeRangeFilter(Scan):
         self._m = None
         self._b = None
 
+        # Dmax parameter for the C-parameter model
+        self._dmax = None
+
+        self._background_region = None
+
     @property
     def wrf_calibration(self) -> tuple[float]:
         """
         WRF calibration coefficients (m,b).
         """
         return self._m, self._b
+
+    @property
+    def dmax(self) -> float:
+        """
+        Dmax parameter for the C-parameter model.
+        """
+        return self._dmax
+
+    @property
+    def background_region(self):
+        """
+        Background region for the WRF scan in Thickness,Diameter space.
+
+        [[tmin, tmax], [dmin, dmax]]
+
+        Returns
+        -------
+        background, tuple[tuple[float,float]]
+            Background region
+        """
+        if self._background_region is None:
+            return ((0, 800), (0, 20))
+        else:
+            return self._background_region
+
+    @dmax.setter
+    def dmax(self, value: float):
+        self._dmax = value
 
     @property
     def _wrf_calib_data(self):
@@ -297,8 +333,24 @@ class WedgeRangeFilter(Scan):
         return self._axes["X"].axis(tracks=self.selected_tracks)
 
     @property
-    def wrf_thickness(self):
+    def wrf_thickness(self) -> u.Quantity:
+        """
+        Thickness of the WRF as a function of the x-axis.
+        """
         return (self._m * self.xaxis.m_as(u.cm) + self._b) * u.um
+
+    def plot_diameter_histogram(self, dlim=None):
+        """
+        Plot a histogram of the track diameters.
+
+        Useful for identifying dmax.
+        """
+        bins = self._axes["D"].axis(tracks=self.selected_tracks).m_as(u.um)
+        fig, ax = plt.subplots()
+        ax.hist(self.selected_tracks[:, 2], bins=bins)
+        ax.set_xlim(*dlim)
+        ax.set_yscale("log")
+        return fig, ax
 
     # TODO: this really only makes sense if you don't need to visualize the
     # interim steps...
@@ -389,28 +441,32 @@ class WedgeRangeFilter(Scan):
 
     def fit(
         self,
-        guess: tuple[float] = (15, 0.1, 1, 20),
-        bounds: list[tuple[float]] = [(12, 17), (0.05, 2), (0.4, 1.6), (14, 24)],
+        guess: tuple[float] = (15, 0.1, 1),
+        bounds: list[tuple[float]] = [(12, 17), (0.05, 2), (0.4, 1.6)],
         plot=True,
     ) -> np.ndarray:
         """
         Fit the selected WRF data with the synthetic WRF model.
 
-        Fitting is done with a differential evolution algorithm.
+        Fitting is done with a nonlinear least squares algorithm.
 
-        The model fits the data with a four parameter model:
+        The model fits the data with a three parameter model:
         - Mean energy of Gaussian particle energy distribution.
         - Standard deviation of the Gaussian particle energy distribution.
         - C-parameter for the C-parameter response model.
-        - dmax parameter for the C-parameter response model.
 
+        The `self.dmax` parameter is used as a fixed parameter in the
+        C-paramter model in the fit.
+
+        Background subtraction is automatically performed, using the
+        values stored in the `self.background_region` attribute.
 
         Parameters
         ----------
         guess : tuple[float], optional
-            Initial guess for the four fit parameters. The default is (15, 0.1, 1, 20)
+            Initial guess for the fit parameters. The default is (15, 0.1, 1)
         bounds : list[tuple[float]], optional
-            (min,max) bounds for the four fit parameters. The default is [(12,17), (0.05, 2), (0.4,1.6), (14,24)]
+            (min,max) bounds for the fit parameters. The default is [(12,17), (0.05, 2), (0.4,1.6)]
         plot : bool, optional
             If True, plot a comparison between the data and best fit at the end. Default is True.
 
@@ -420,32 +476,47 @@ class WedgeRangeFilter(Scan):
             Best fit results for each parameter
         """
 
-        xax, dax, data = self.histogram(axes=("X", "D"))
+        # FInd the background and remove from the data
+        xax, dax, data = self.histogram(axes="XD")
+
+        thickness = self.wrf_thickness.m
+        ta = np.argmin(np.abs(thickness - self.background_region[0][0]))
+        tb = np.argmin(np.abs(thickness - self.background_region[0][1]))
+        da = np.argmin(np.abs(dax.m_as(u.um) - self.background_region[1][0]))
+        db = np.argmin(np.abs(dax.m_as(u.um) - self.background_region[1][1]))
+        bkg = np.nanmean(data[ta:tb, da:db].m)
+        data = data - bkg
 
         def minimization_fcn(params):
             synthetic = synthetic_wrf_data(
                 params,
                 xax.m,
                 dax.m,
+                self.dmax,
                 self.wrf_calibration,
             )
             return wrf_objective_function(synthetic, data, return_sum=True)
 
-        res = differential_evolution(minimization_fcn, bounds, x0=guess)
+        # Least squares takes bounds in a weird format: this re-organizes the list
+        _bounds = ([x[0] for x in bounds], [x[1] for x in bounds])
+
+        res = least_squares(minimization_fcn, guess, bounds=_bounds)
+        # res = differential_evolution(minimization_fcn, bounds, x0=guess)
 
         if plot:
             synthetic_data = synthetic_wrf_data(
                 res.x,
                 xax.m,
                 dax.m,
+                self.dmax,
                 self.wrf_calibration,
             )
 
-            emean, estd, c, dmax = res.x
+            emean, estd, c = res.x
             fig, ax = plt.subplots()
             ax.set_title(
-                f"Emean={emean:.2f} MeV, Estd={estd:.2f} MeV, c={c:.2f}, dmax={dmax:.2f} um"
+                f"Emean={emean:.2f} MeV, Estd={estd:.2f} MeV, c={c:.2f}, bkg={bkg:.2e}, dmax={self.dmax:.2f} um"
             )
             ax.pcolormesh(xax.m, dax.m, data.T, cmap="binary_r")
-            ax.contour(xax.m, dax.m, synthetic_data.T, [0.1, 0.3, 0.5, 0.7, 0.9])
-        return res.x
+            ax.contour(xax.m, dax.m, synthetic_data.T, 5)
+        return res
