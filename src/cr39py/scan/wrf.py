@@ -345,8 +345,8 @@ class WedgeRangeFilter(Scan):
             # Otherwise try to get calibration constants from the keyword itself
             try:
                 m, b = wrf
-            except IndexError:
-                raise ValueError(f"Invalid value for wrf keyword: {wrf}")
+            except ValueError as e:
+                raise ValueError(f"Invalid value for wrf keyword: {wrf}") from e
 
         obj._m = m
         obj._b = b
@@ -376,7 +376,8 @@ class WedgeRangeFilter(Scan):
         bins = self._axes["D"].axis(tracks=self.selected_tracks).m_as(u.um)
         fig, ax = plt.subplots()
         ax.hist(self.selected_tracks[:, 2], bins=bins)
-        ax.set_xlim(*dlim)
+        if dlim is not None:
+            ax.set_xlim(*dlim)
         ax.set_yscale("log")
         return fig, ax
 

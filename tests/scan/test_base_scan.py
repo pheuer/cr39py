@@ -8,9 +8,16 @@ import pytest
 from cr39py.core.ci import SilentPlotting
 from cr39py.core.data import data_dir
 from cr39py.core.units import unit_registry as u
-from cr39py.scan.base_scan import Scan
+from cr39py.scan.base_scan import Axis, Scan
 from cr39py.scan.cut import Cut
 from cr39py.scan.subset import Subset
+
+
+def test_axis():
+    axis = Axis(ind=2, unit=u.um, default_range=(0, 20, 0.5))
+    assert axis.ind == 2
+    assert axis.unit == u.um
+    print(axis.name)
 
 
 @pytest.fixture
@@ -21,7 +28,6 @@ def cr39scan():
 
 def test_from_tracks(cr39scan):
     tracks = cr39scan.tracks
-
     scan2 = Scan.from_tracks(tracks, 120)
 
 
