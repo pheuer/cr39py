@@ -1,3 +1,25 @@
+"""
+The `~cr39py.scan.wrf` module contains functionality for analyzing scans of
+CR=39 fielded with a wedge range filter, and for forward-modeling synthetic
+WRF data.
+
+A WRF is a wedge of material (usually aluminum) with different thicknesses
+along the x-axis of the CR-39. Combined with the diameter-energy response
+relationship of the CR-39, the WRF can be used to determine the energy
+distribution of incident particles.
+
+
+References
+----------
+The following papers are important references for WRFs.
+
+* :cite:t:`Seguin2003spectrometry` is the foundational paper on charged particle spectroscopy with CR-39.
+* :cite:t:`Seguin2012advances` presents improvements on the design and describes some of the analysis of WRFs.
+* :cite:t:`Zylstra2012charged` describes the implementation of WRFs on the National Ignition Facility.
+* :cite:t:`Sio2014technique` presents an specialty technique for analyzing extremely saturated WRF data - this technique is currently not implemented in cr39py.
+
+"""
+
 from functools import cache
 from pathlib import Path
 
@@ -155,6 +177,22 @@ def wrf_objective_function(synthetic: np.ndarray, data: np.ndarray, return_sum=T
 
 
 class WedgeRangeFilter(Scan):
+    """
+    A scan of a piece of CR-39 fielded behind a Wedge Range Filter (WRF).
+
+    The thickness profile is uniquely calibrated for each WRF. In cr39py, this
+    calibration takes the form of fit coefficients to the equation
+
+    .. math::
+        \\text{thickness} = m*x + b
+
+    Where :math:`x` is the horizontal position of the CR-39 scan, and :math:`(m,b)` are the
+    slope and offset calibration coefficients (with units of um/cm and um, respectively).
+    WRFs imprint fiducials (via holes in the filter) onto the CR-39 which are used to align the
+    piece precisely prior to scanning, so the x-axis in the scan should always be identical
+    to :math:`x` in the fit.
+
+    """
 
     _calib_file = data_dir / Path("calibration/wrf_calibrations.yml")
 
@@ -275,18 +313,8 @@ class WedgeRangeFilter(Scan):
         if it is included in a format like  ``_#m_``, ``_#min_``, ``_#h_``,
         ``_#hr_``, etc.
 
-        The thickness profile is uniquely calibrated for each WRF. In cr39py, this
-        calibration takes the form of fit coefficients to the equation
-
-        .. math::
-            \\text{thickness} = m*x + b
-
-        Where :math:`x` is the horizontal position of the CR-39 scan, and :math:`(m,b)` are the
-        slope and offset calibration coefficients (with units of um/cm and um, respectively).
-        WRFs imprint fiducials (via holes in the filter) onto the CR-39 which are used to align the
-        piece precisely prior to scanning, so the x-axis in the scan should always be identical
-        to :math:`x` in the fit.
-
+        If a WRF ID code matching a calibration saved in the WRF calibration file
+        is found in the filename, the calibration will automatically be retrieved.
 
         Parameters
         ---------
@@ -464,9 +492,9 @@ class WedgeRangeFilter(Scan):
         Parameters
         ----------
         guess : tuple[float], optional
-            Initial guess for the fit parameters. The default is (15, 0.1, 1)
+            Initial guess for the fit parameters.
         bounds : list[tuple[float]], optional
-            (min,max) bounds for the fit parameters. The default is [(12,17), (0.05, 2), (0.4,1.6)]
+            (min,max) bounds for the fit parameters.
         plot : bool, optional
             If True, plot a comparison between the data and best fit at the end. Default is True.
 
@@ -474,6 +502,12 @@ class WedgeRangeFilter(Scan):
         -------
         best_fit : np.ndarray
             Best fit results for each parameter
+
+
+        References
+        ----------
+        When using this method to fit WRF data, please cite :cite:t:`Seguin2012advances`
+
         """
 
         # FInd the background and remove from the data
