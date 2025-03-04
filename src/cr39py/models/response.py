@@ -113,7 +113,11 @@ class CParameterModel:
     The C-parameter model of :cite:t:`Lahmann2020cr39`
 
     Only suitable for protons, but for that application this model
-    is more accurate than the two-parameter model.
+    is more accurate than the two-parameter model :cite:p:`Lahmann2020cr39`.
+
+    The C-parameter model specifically fits the diameter of tracks in the 'flat' region
+    of the 'hockey-stick' curve in diameter-contrast space, where tracks of increasing energy/etch time
+    move approximately horizontally, so E(D) with no contrast dependence.
 
     References
     ----------
@@ -309,7 +313,9 @@ class CParameterModel:
         D_scaled = self.D_scaled(diameter)
 
         DE_curve = self.scaled_diameter_curve(eaxis)
-        interp = interp1d(DE_curve, eaxis, kind="cubic")
+        interp = interp1d(
+            DE_curve, eaxis, kind="cubic", bounds_error=False, fill_value=np.nan
+        )
 
         E = interp(D_scaled)
 
@@ -326,6 +332,10 @@ class TwoParameterModel:
     A CR-39 response model for protons, deuterons, tritons, and alphas.
 
     This model was initially described in :cite:t:`Lahmann2020cr39`.
+
+    The two parameter model specifically predicts the diameter of tracks in the 'flat' region
+    of the 'hockey-stick' curve in diameter-contrast space, where tracks of increasing energy/etch time
+    move approximately horizontally, so E(D) with no contrast dependence.
 
     References
     ----------

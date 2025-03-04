@@ -30,3 +30,4 @@ cr39py is a package for analyzing CR-39 particle track data.
    notebooks/applying_cuts_to_a_cpsa_file
    notebooks/filtration_stacks
    notebooks/nuclear_reaction_data
+   notebooks/analyze_wrf
