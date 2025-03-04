@@ -19,6 +19,17 @@ def test_axis():
     assert axis.unit == u.um
     print(axis.name)
 
+    tracks = np.random.random((100, 6)) * 10
+    ax = axis.axis(range=(0, 10))
+    ax = axis.axis(range=(None, None), tracks=tracks)
+    ax = axis.axis(tracks=tracks)
+
+    axis = Axis(ind=2, unit=u.um, default_range=(None, None, None))
+    with pytest.raises(ValueError):
+        ax = axis.axis()
+    ax = axis.axis(range=(0, 10))
+    ax = axis.axis(tracks=tracks)
+
 
 @pytest.fixture
 def cr39scan():

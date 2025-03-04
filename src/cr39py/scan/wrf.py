@@ -239,6 +239,13 @@ class WedgeRangeFilter(Scan):
         else:
             return self._background_region
 
+    @background_region.setter
+    def background_region(self, value):
+        """
+        Set the background region for the WRF scan.
+        """
+        self._background_region = value
+
     @dmax.setter
     def dmax(self, value: float):
         self._dmax = value
@@ -295,7 +302,7 @@ class WedgeRangeFilter(Scan):
                 return s.lower()
 
         # If nothing was found, raise an exception
-        raise ValueError(
+        raise ValueError(  # pragma: no cover
             f"No valid WRF ID was found in the filename {path.stem} that matches an entry in the calibration file {self._calib_file}"
         )
 
@@ -434,6 +441,8 @@ class WedgeRangeFilter(Scan):
         elif trange is not None:
             xrange = (np.array(trange) - self._b) / self._m
             xmin, xmax = xrange
+        else:
+            xmin, xmax = None, None
 
         if yrange is not None:
             ymin, ymax = yrange

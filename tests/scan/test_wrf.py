@@ -43,8 +43,15 @@ def test_access_attributes(wrf, attribute):
     getattr(wrf, attribute)
 
 
+def test_background_region(wrf):
+    wrf.background_region = ((400, 1800), (10, 22))
+    assert wrf.background_region[0][1] == 1800
+
+
 def test_set_limits(wrf):
-    wrf.set_limits()
+    wrf.set_limits(
+        xrange=None, trange=None, drange=None, yrange=None, crange=None, erange=None
+    )
     wrf.set_limits(xrange=(-1, 1))
     wrf.set_limits(trange=(100, 1800), drange=(10, 22), crange=(0, 10), erange=(0, 15))
 
