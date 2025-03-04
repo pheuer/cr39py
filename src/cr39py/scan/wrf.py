@@ -170,9 +170,9 @@ def wrf_objective_function(synthetic: np.ndarray, data: np.ndarray, return_sum=T
         _synthetic[~mask] = np.nan
 
         _data = _data / np.nansum(_data)
-        _synthetic_data = _synthetic_data / np.nansum(_synthetic_data)
+        _synthetic = _synthetic / np.nansum(_synthetic)
 
-        chi2 = (_data - _synthetic_data) ** 2 / _data
+        chi2 = (_data - _synthetic) ** 2 / _data
         return chi2
 
 

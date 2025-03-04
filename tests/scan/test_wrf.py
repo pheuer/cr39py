@@ -59,7 +59,10 @@ def test_wrf_objective_fcn():
     x2[1, 0] = 0
     x2[1, 2] = np.nan
 
-    wrf_objective_function(x1, x2)
+    s1 = wrf_objective_function(x1, x2, return_sum=False)
+    s2 = wrf_objective_function(x1, x2, return_sum=True)
+
+    # They won't be exactly equal because of the difference in the mask for data=0
 
 
 def test_wrf_plot(wrf):
