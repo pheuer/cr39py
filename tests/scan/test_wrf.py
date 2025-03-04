@@ -19,6 +19,26 @@ def wrf():
     return wrf
 
 
+def test_init_with_keywords():
+    # Not actually a WRF, but it exists and doesn't have any etch time or ID code in the filename
+    cpsa_path = data_dir / Path("test/test_alphas.cpsa")
+
+    wrf = WedgeRangeFilter.from_cpsa(cpsa_path, etch_time=360, wrf="G093")
+
+    # Explicitly provide the calibration
+    wrf = WedgeRangeFilter.from_cpsa(cpsa_path, etch_time=360, wrf=(800, 1200))
+
+    # Test invalid calibration
+    with pytest.raises(ValueError):
+        wrf = WedgeRangeFilter.from_cpsa(cpsa_path, etch_time=360, wrf=(1, 2, 3, 4))
+
+    # Test unknown ID code
+    with pytest.raises(KeyError):
+        wrf = WedgeRangeFilter.from_cpsa(
+            cpsa_path, etch_time=360, wrf="not a valid WRF ID code"
+        )
+
+
 def test_wrf_analysis(wrf):
     wrf.set_limits(trange=(100, 1800), drange=(10, 16), crange=(0, 10), erange=(0, 15))
 

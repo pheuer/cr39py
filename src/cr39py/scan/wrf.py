@@ -198,9 +198,9 @@ class WedgeRangeFilter(Scan):
         m,b : float
             Slope and offset fit coefficients.
         """
-
+        id = id.lower()
         data = self._wrf_calib_data
-        if id.lower() not in data:
+        if id not in data:
             raise KeyError(f"No calibration data found for {id} in {self._calib_file}")
 
         entry = data[id]
