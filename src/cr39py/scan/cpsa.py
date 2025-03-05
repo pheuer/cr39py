@@ -249,7 +249,7 @@ def read_cpsa(path: Path) -> TrackData:
     for note in note_fields:
         # This regex matches a line like "0>    (4.22560, 2.76639)   [Notes: UL-m]"
         # and extracts the pair of points (4.22560, 2.76639) as the match group
-        pattern = f"\([+-]?([0-9]*[.][0-9]+),\s[+-]?([0-9]*[.][0-9]+)\)[\s]+\[Notes:[\s]+{note}\]\n"
+        pattern = rf"\([+-]?([0-9]*[.][0-9]+),\s[+-]?([0-9]*[.][0-9]+)\)[\s]+\[Notes:[\s]+{note}\]\n"
         match = re.search(pattern, footer)
         if match is not None:
             point = np.array([float(x) for x in match.groups()])
