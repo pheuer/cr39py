@@ -539,7 +539,7 @@ class WedgeRangeFilter(Scan):
                 self.dmax,
                 self.wrf_calibration,
             )
-            return wrf_objective_function(synthetic, data, return_sum=True)
+            return wrf_objective_function(synthetic, data.m, return_sum=True)
 
         # Least squares takes bounds in a weird format: this re-organizes the list
         _bounds = ([x[0] for x in bounds], [x[1] for x in bounds])
@@ -561,6 +561,6 @@ class WedgeRangeFilter(Scan):
             ax.set_title(
                 f"Emean={emean:.2f} MeV, Estd={estd:.2f} MeV, c={c:.2f}, bkg={bkg:.2e}, dmax={self.dmax:.2f} um"
             )
-            ax.pcolormesh(xax.m, dax.m, data.T, cmap="binary_r")
+            ax.pcolormesh(xax.m, dax.m, data.m.T, cmap="binary_r")
             ax.contour(xax.m, dax.m, synthetic_data.T, 5)
         return res

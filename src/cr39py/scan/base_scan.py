@@ -772,7 +772,7 @@ class Scan(ExportableClassMixin):
         xlim: tuple[float, float] | None = None,
         ylim: tuple[float, float] | None = None,
     ) -> tuple[np.ndarray]:
-        """
+        r"""
         Create a histogram of the currently selected track data
 
         The following quantities can be used as axes or quantities:
@@ -890,7 +890,7 @@ class Scan(ExportableClassMixin):
 
     @property
     def chi(self) -> tuple[np.ndarray]:
-        """
+        r"""
         The Zylstra overlap parameter ``chi`` for each cell.
 
         As defined in :cite:t:`Zylstra2012new`.
@@ -920,7 +920,7 @@ class Scan(ExportableClassMixin):
 
     @property
     def F2(self) -> tuple[np.ndarray]:
-        """
+        r"""
         The Zylstra overlap parameter ``F2`` for each cell.
 
         As defined in :cite:t:`Zylstra2012new`.
@@ -1152,8 +1152,18 @@ class Scan(ExportableClassMixin):
             if i == 2 and quantity is None:
                 continue
 
-            axname = axes[i] if i < 2 else quantity
-            axobj = self._axes[axname]
+            elif i == 2 and quantity in self._axes:
+                axobj = self._axes[quantity]
+                default_range = axobj.default_range
+
+            elif i == 2 and quantity not in self._axes:
+                default_range = (None, None)
+
+            else:
+                axname = axes[i]
+                axobj = self._axes[axname]
+                default_range = axobj.default_range
+
             axis = [xax, yax, arr][i]
             if limits[i] is None:
                 limits[i] = [None, None]
@@ -1184,20 +1194,24 @@ class Scan(ExportableClassMixin):
         ax.set_ylabel(axes[1], fontsize=fontsize)
         ax.set_title(title, fontsize=fontsize)
 
-        try:
-            p = ax.pcolorfast(xax.m, yax.m, arr.m.T)
+        if zlim is not None:
+            zmin, zmax = zlim
+        else:
+            zmin, zmax = None, None
 
-            cb_kwargs = {
-                "orientation": "vertical",
-                "pad": 0.07,
-                "shrink": 0.8,
-                "aspect": 16,
-            }
-            cbar = fig.colorbar(p, ax=ax, **cb_kwargs)
-            cbar.set_label(ztitle, fontsize=fontsize)
+        p = ax.pcolormesh(xax.m, yax.m, arr.m.T, vmin=zmin, vmax=zmax)
 
-        except ValueError:  # raised if one of the arrays is empty
-            pass
+        cb_kwargs = {
+            "orientation": "vertical",
+            "pad": 0.07,
+            "shrink": 0.8,
+            "aspect": 16,
+        }
+        cbar = fig.colorbar(p, ax=ax, **cb_kwargs)
+        cbar.set_label(ztitle, fontsize=fontsize)
+
+        if show:
+            plt.show()
 
         return fig, ax
 
