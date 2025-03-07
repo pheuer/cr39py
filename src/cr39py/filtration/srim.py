@@ -13,7 +13,7 @@ from cr39py.core.data import data_dir
 
 
 class SRIMData:
-    """
+    r"""
     Represents an output file from the `SRIM <http://www.srim.org/>`__ code.
 
 
