@@ -26,6 +26,27 @@ def read_cpsa(path: Path) -> TrackData:
     tracks: `~np.ndarray` (ntracks,6)
        Array of track data.
 
+    metadata : dict
+        Dictionary of metadata (see below).
+
+
+    Metadata
+    --------
+
+    The metadata dictionary always includes the following keys:
+
+    * "version": The version of the CPSA file.
+    * "nx_frames", "ny_frames": The number of microscope frames in the x and y directions of the scan.
+    * "nframes": The total number of frames in the scan.
+    * "pixel_size": The pixel size in microns.
+    * "threshold": The threshold for border, contrast, eccentricity, and number of eccentricity moments, as set during the scan.
+    * "NFPx", "NFPy": The number of utilized camera image pixels in the x and y directions.
+    * "frame_size_x", "frame_size_y": The size of the microscope frame in microns.
+
+    The following optional keys may also be present, depending on the contents of the CPSA file footer:
+
+    * Image locations from the footer e.g. "1>    (0.52671, 2.75683)   [Notes: UR-m]". Example keys are "UL-m", "UR-m", "UL-FE", "UL-NE", "UR-FE", "UR-NE"
+
     Notes
     -----
     Adapted from code written by Hans Rinderknecht.
