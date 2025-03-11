@@ -22,9 +22,9 @@ jobs:
         python-version: [3.11, 3.12]
 
         include:
-            os: ubuntu-latest
-            python-version: '3.12'
-            run-codecov: true
+          - os: ubuntu-latest
+          - python-version: '3.12'
+          - run-codecov: true
 
     runs-on: ${{ matrix.os }}
 
