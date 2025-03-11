@@ -7,6 +7,11 @@ on:
   pull_request:
 
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+
 jobs:
 
   tests:
@@ -44,7 +49,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest --cov --cov-report=xml -n auto
+        pytest --cov --cov-report=xml -n 2
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
