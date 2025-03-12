@@ -7,9 +7,9 @@ The following people have contributed to the development of cr39py by sharing th
 
 - Johan Frenje (MIT)
 - Justin Kunimune (MIT)
+- Brandon Lahmann (LLNL)
 - Hannah McClow (LLE)
 - Hans Rinderknecht (LLE)
 - Jayden Roberts (UR/LLE)
 - Ian Rudnick (MIT)
 - Melody Scott (LLE)
-- Brandon Lahmann (LLNL)
