@@ -26,14 +26,12 @@ def reduced_mass(reaction: str) -> float:
 
     Reaction string should be in the format r1(r2,p1)p2
 
-
-
     Parameters
     ----------
 
     reaction : str
-        The nuclear reaction. Valid reactants are [p,D,T,3He,4He].
-        Reaction string should be in the format r1(r2,p1)p2. Products,
+        The nuclear reaction. Supported strings are listed in
+        `~cr39py.models.fusion.reactions`. Products,
         if present, are ignored.
 
     Returns
