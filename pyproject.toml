@@ -6,6 +6,8 @@ requires = [
   "wheel >= 0.37.0",
 ]
 
+[tool.setuptools_scm]
+
 [project]
 name = "cr39py"
 dynamic = ['version']
