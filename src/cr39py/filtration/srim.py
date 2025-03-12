@@ -56,7 +56,7 @@ class SRIMData:
         The SRIM file must have stopping power saved in units of keV/um.
 
         SRIM data files must be placed in the directory
-        ``cr39py/data/srim``.
+        ``src/cr39py/core/data/srim``.
 
         The filename must follow the format ``[particle] in [target material].txt``
 
