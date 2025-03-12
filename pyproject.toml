@@ -12,7 +12,7 @@ dynamic = ['version']
 authors = [
   {name = "Peter Heuer"},
   ]
-description = "Python package for analyzing CR39 particle track data"
+description = "Python package for analyzing CR-39 particle track data"
 readme = "README.md"
 license = {file = "LICENSE.md"}
 keywords = [
