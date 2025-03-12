@@ -1,7 +1,7 @@
 .. _citation:
 
-Acknowledging and citing cr39py
-===============================
+Citing cr39py
+=============
 
 If you use cr39py for a project that results in a publication, please cite the github URL.
 Citing software packages promotes scientific reproducibility (by recording the specific version of the code used for your analysis) and gives credit to
