@@ -3,24 +3,40 @@ Installation
 
 .. _installation:
 
-Installation
-------------
-
-.. note::
-   cr39py is still undergoing rapid development, and therefore an official version has not been released yet. Once an official version is released,
-   the package will be installable from ``pip`` like most other python packages.
+If you plan on using released versiosn of ``cr39py`` and do not plan to make any changes to the source code, follow the regular installation instructions.
+If you want access to the development version of ``cr39py`` (``main`` on GitHub), or if you plan to make edits to the source code, follow the developer
+installation instructions.
 
 
-You can install cr39py by cloning the repository on `GitHub <https://github.com/pheuer/cr39py>`_
+Regular Installation
+--------------------
 
-After downloading/cloning the repository, navigate to the folder and run the following command
+The most recent release of ``cr39py`` can be installed from PyPI using pip.
 
 .. code-block:: console
 
-   pip install .
+   pip install cr39py
 
-Or, if you would like to make changes to the source code, create an editable installation by including the ``-e`` flag
+
+
+Developer (editable) Installation
+---------------------------------
+
+First, create a local clone of the `GitHub repository <https://github.com/pheuer/cr39py>`_. This will require a local install of git.
+
+.. code-block:: console
+
+   git clone https://github.com/pheuer/cr39py
+
+
+Then, navigate to the folder and run the following command
 
 .. code-block:: console
 
    pip install -e .
+
+If you plan to contribute to the code, you should also install the development dependencies.
+
+.. code-block:: console
+
+   pip install -e .[docs,tests]
