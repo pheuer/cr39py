@@ -12,13 +12,15 @@ cr39py is a package for analyzing CR-39 particle track data.
    :maxdepth: 1
    :caption: Contents
 
-   Usage <usage>
-
-   API <autoapi/index>
+   Installation <installation>
 
    Bibliography <bibliography>
 
-   Acknowledging and Citing cr39py <citation>
+   Citing cr39py <citation>
+
+   Acknowledgements <acknowledgements>
+
+   API <autoapi/index>
 
 
 

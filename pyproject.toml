@@ -16,7 +16,7 @@ description = "Python package for analyzing CR39 particle track data"
 readme = "README.md"
 license = {file = "LICENSE.md"}
 keywords = [
-  "CR39",
+  "CR-39", "nuclear", "particle", "plasma", "HED", "physics",
 ]
 
 
