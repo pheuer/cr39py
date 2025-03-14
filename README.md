@@ -14,10 +14,10 @@ cr39py can be installed using pip
 pip install cr39py
 ```
 
-See the online documentation for `more detailed installation instructions <https://cr39py.readthedocs.io/en/latest/installation.html>`_.
+See the online documentation for [more detailed installation instructions](https://cr39py.readthedocs.io/en/latest/installation.html).
 
 ## Citing cr39py
-If you use cr39py for research resulting in a publication, please `cite cr39py <https://cr39py.readthedocs.io/en/latest/citation.html>`_.
+If you use cr39py for research resulting in a publication, please [cite cr39py](https://cr39py.readthedocs.io/en/latest/citation.html).
 
 ## Contributing to cr39py
-User contributions to cr39py are welcome! Please see `the contributor guidelines <https://cr39py.readthedocs.io/en/latest/contributing.html>`_.
+User contributions to cr39py are welcome! Please see [the contributor guidelines](https://cr39py.readthedocs.io/en/latest/contributing.html).
