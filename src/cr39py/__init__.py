@@ -1,3 +1,4 @@
+from cr39py.core.units import u
 from cr39py.filtration.layer import Layer
 from cr39py.filtration.stack import Stack
 from cr39py.scan.base_scan import Scan
