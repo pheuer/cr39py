@@ -3,8 +3,8 @@ Installation
 
 .. _installation:
 
-If you plan on using released versiosn of ``cr39py`` and do not plan to make any changes to the source code, follow the regular installation instructions.
-If you want access to the development version of ``cr39py`` (``main`` on GitHub), or if you plan to make edits to the source code, follow the developer
+If you plan on using released versions of ``cr39py`` and do not plan to make any changes to the source code, follow the regular installation instructions.
+If you want access to the development version of ``cr39py`` (e.g. the ``main`` branch  on the `GitHub repository <https://github.com/pheuer/cr39py>`_), or if you plan to make edits to the source code, follow the developer
 installation instructions.
 
 
