@@ -893,7 +893,12 @@ class Scan(ExportableClassMixin):
         r"""
         The Zylstra overlap parameter ``chi`` for each cell.
 
-        As defined in :cite:t:`Zylstra2012new`.
+        .. math::
+           \chi = \eta \pi \bar{D}^2
+
+        As defined in :cite:t:`Zylstra2012new`, where :math:`\eta` is the
+        track density in tracks/cm^2 and :math:`\bar{D}` is the average
+        track diameter in cm.
 
         Only includes currently selected tracks.
 

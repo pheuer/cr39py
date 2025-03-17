@@ -4,7 +4,8 @@ import numpy as np
 
 
 def goal_diameter(fluence, desired_F2=0.025, max_goal=10):
-    """Calculates the ideal track diameter in um to achieve a given overlap parameter F2.
+    """
+    Calculates the ideal mean track diameter in um to achieve a given overlap parameter F2.
 
     The track overlap parameter is defined in :cite:t:`Zylstra2012new`.
 
