@@ -351,14 +351,12 @@ class TwoParameterModel:
         "a": {"Z": 2, "A": 4, "k": 0.3938, "n": 1.676},
     }
 
-    # Bulk etch velocity is constant
-    vB = 2.66  # km/s
-
-    def __init__(self, particle, k=None, n=None):
+    def __init__(self, particle, k=None, n=None, vB=2.66):
         self.particle = str(particle).lower()
 
         self._k = k
         self._n = n
+        self._vB = vB  # um/hr
 
     @property
     def Z(self):
@@ -397,6 +395,17 @@ class TwoParameterModel:
     @n.setter
     def n(self, n):
         self._n = n
+
+    @property
+    def vB(self):
+        """
+        The bulk etch velocity ``vB``  as defined in :cite:t:`Lahmann2020cr39`.
+        """
+        return self._vB
+
+    @vB.setter
+    def vB(self, vB):
+        self._vB = vB
 
     def track_energy(self, diameter, etch_time, k=None, n=None):
         """
