@@ -773,7 +773,11 @@ class Scan(ExportableClassMixin):
         ylim: tuple[float, float] | None = None,
     ) -> tuple[np.ndarray]:
         r"""
-        Create a histogram of the currently selected track data
+        Create a histogram of the currently selected track data.
+
+        If the ``quantity`` keyword is set, the array returned
+        is the mean of that quantity in each frame, rather than the
+        number of particles in the frame.
 
         The following quantities can be used as axes or quantities:
         - 'X': x position
@@ -783,8 +787,7 @@ class Scan(ExportableClassMixin):
         - 'E': ecentricity
         - 'Z' : z position/lens position during scan
 
-
-        Histograms of the following composite quantities can also be made
+        Arrays of the following composite quantities can also be made
         - CHI : The ``chi`` track overlap parameter from :cite:t:`Zylstra2012new`
         - F2 : The ``F2`` track overlap parameter from :cite:t:`Zylstra2012new`
         - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
