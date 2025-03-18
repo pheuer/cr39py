@@ -142,6 +142,12 @@ class Subset(ExportableClassMixin):
 
         self.domain = c
 
+    def clear_domain(self) -> None:
+        """
+        Reset the domain to an empty cut.
+        """
+        self.domain = Cut()
+
     def select_dslice(self, dslice: int | None) -> None:
         """Set the currently selected dslice.
 
@@ -282,6 +288,12 @@ class Subset(ExportableClassMixin):
                 f"Cannot replace the {i} cut, there are only " f"{len(self.cuts)} cuts."
             )
         self.cuts[i] = cut
+
+    def clear_cuts(self) -> None:
+        """
+        Remove all cuts.
+        """
+        self.cuts = []
 
     def apply_cuts(
         self, tracks: TrackData, use_cuts: list[int] | None = None, invert: bool = False

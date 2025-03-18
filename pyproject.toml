@@ -6,17 +6,19 @@ requires = [
   "wheel >= 0.37.0",
 ]
 
+[tool.setuptools_scm]
+
 [project]
 name = "cr39py"
-version = "2025.2"
+dynamic = ['version']
 authors = [
   {name = "Peter Heuer"},
   ]
-description = "Python package for analyzing CR39 particle track data"
+description = "Python package for analyzing CR-39 particle track data"
 readme = "README.md"
 license = {file = "LICENSE.md"}
 keywords = [
-  "CR39",
+  "CR-39", "nuclear", "particle", "plasma", "HED", "physics",
 ]
 
 
@@ -34,6 +36,7 @@ dependencies = [
     'scipy>=1.14.1',
     "tqdm >= 4.65.0",
     "setuptools >= 66.0.0",
+    "pyyaml >= 6.0.2",
   ]
 
 
@@ -54,6 +57,8 @@ docs = [
 
 tests = [
   "pytest >= 8.3.1",
+  "pytest-cov >= 6.0.0",
+  "pytest-xdist >= 3.6.1",
   ]
 
 
@@ -71,6 +76,7 @@ skip = '*.ipynb,*.bib'
 ignore-words-list = """
 astroid,
 hax,
+nd,
 vax"""
 
 [tool.coverage.run]

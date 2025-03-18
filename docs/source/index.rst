@@ -12,13 +12,17 @@ cr39py is a package for analyzing CR-39 particle track data.
    :maxdepth: 1
    :caption: Contents
 
-   Usage <usage>
+   Installation <installation>
 
-   API <autoapi/index>
+   Citing cr39py <citation>
+
+   Contributing to cr39py <contributing>
+
+   Acknowledgements <acknowledgements>
 
    Bibliography <bibliography>
 
-   Acknowledging and Citing cr39py <citation>
+   API <autoapi/index>
 
 
 
@@ -27,6 +31,8 @@ cr39py is a package for analyzing CR-39 particle track data.
    :name: example-gallery
 
 
-   notebooks/applying_cuts_to_a_cpsa_file
+   notebooks/applying_cuts_to_a_scan_object
    notebooks/filtration_stacks
    notebooks/nuclear_reaction_data
+   notebooks/analyze_wrf
+   notebooks/units

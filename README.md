@@ -6,3 +6,18 @@
 Code for designing experiments using CR-39, calculating etch times for CR-39 processing, and analyzing CR-39 track data.
 
 Documentation: https://cr39py.readthedocs.io/en/latest/
+
+## Installing cr39py
+cr39py can be installed using pip
+
+```Shell
+pip install cr39py
+```
+
+See the online documentation for [more detailed installation instructions](https://cr39py.readthedocs.io/en/latest/installation.html).
+
+## Citing cr39py
+If you use cr39py for research resulting in a publication, please [cite cr39py](https://cr39py.readthedocs.io/en/latest/citation.html).
+
+## Contributing to cr39py
+User contributions to cr39py are welcome! Please see [the contributor guidelines](https://cr39py.readthedocs.io/en/latest/contributing.html).

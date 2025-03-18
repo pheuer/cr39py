@@ -1,7 +1,10 @@
 # Configuration file for the Sphinx documentation builder.
 
+import importlib.metadata
 import os
 import sys
+
+__version__ = importlib.metadata.version("cr39py")
 
 # print(os.path.abspath(".."))
 # Tell autodoc where to find the source code
@@ -15,7 +18,7 @@ copyright = "2025, Peter Heuer"
 author = "Peter Heuer"
 
 release = "0.1"
-version = "2025.2"
+version = __version__
 
 # -- General configuration
 

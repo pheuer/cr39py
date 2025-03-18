@@ -26,6 +26,27 @@ def read_cpsa(path: Path) -> TrackData:
     tracks: `~np.ndarray` (ntracks,6)
        Array of track data.
 
+    metadata : dict
+        Dictionary of metadata (see below).
+
+
+    Metadata
+    --------
+
+    The metadata dictionary always includes the following keys:
+
+    * "version": The version of the CPSA file.
+    * "nx_frames", "ny_frames": The number of microscope frames in the x and y directions of the scan.
+    * "nframes": The total number of frames in the scan.
+    * "pixel_size": The pixel size in microns.
+    * "threshold": The threshold for border, contrast, eccentricity, and number of eccentricity moments, as set during the scan.
+    * "NFPx", "NFPy": The number of utilized camera image pixels in the x and y directions.
+    * "frame_size_x", "frame_size_y": The size of the microscope frame in microns.
+
+    The following optional keys may also be present, depending on the contents of the CPSA file footer:
+
+    * Image locations from the footer e.g. "1>    (0.52671, 2.75683)   [Notes: UR-m]". Example keys are "UL-m", "UR-m", "UL-FE", "UL-NE", "UR-FE", "UR-NE"
+
     Notes
     -----
     Adapted from code written by Hans Rinderknecht.
@@ -160,7 +181,10 @@ def read_cpsa(path: Path) -> TrackData:
             # The x and y pos are relative to the upper right corner
             # of the current frame
 
-            t = np.zeros([fh.hits, 7])
+            # TODO: What is the difference between contrast and avg. contrast?
+            # Which should be the "C" in the analysis?
+
+            t = np.zeros([fh.hits, 6])
             if fh.hits > 0:
 
                 # Diameters (converting to um)
@@ -169,13 +193,15 @@ def read_cpsa(path: Path) -> TrackData:
                 )
 
                 # Ecentricities
-                t[:, 5] = np.fromfile(file, count=fh.hits, dtype="byte")
+                t[:, 4] = np.fromfile(file, count=fh.hits, dtype="byte")
 
                 # Contrast
                 t[:, 3] = np.fromfile(file, count=fh.hits, dtype="byte")
 
                 # Avg Contrast
-                t[:, 4] = np.fromfile(file, count=fh.hits, dtype="byte")
+                # Do not store
+                # t[:, 4] = np.fromfile(file, count=fh.hits, dtype="byte")
+                _ = np.fromfile(file, count=fh.hits, dtype="byte")
 
                 # x position, cm
                 # Positions are relative to the top right of the current
@@ -194,7 +220,7 @@ def read_cpsa(path: Path) -> TrackData:
                 )
 
                 # z position, microns
-                t[:, 6] = fh.zpos * pix_size * 1e-2
+                t[:, 5] = fh.zpos * pix_size * 1e-2
 
             frame_tracks.append(t)
 
@@ -218,7 +244,7 @@ def read_cpsa(path: Path) -> TrackData:
     # 6) z position/lens position (um)
 
     # Re-shape the track data into a list of every track
-    tracks = np.zeros([tot_hits, 7], dtype=np.float32)
+    tracks = np.zeros([tot_hits, 6], dtype=np.float32)
     for i in range(nframes):
         tracks[cum_hits[i] : cum_hits[i + 1], :] = frame_tracks[i]
 
@@ -244,7 +270,7 @@ def read_cpsa(path: Path) -> TrackData:
     for note in note_fields:
         # This regex matches a line like "0>    (4.22560, 2.76639)   [Notes: UL-m]"
         # and extracts the pair of points (4.22560, 2.76639) as the match group
-        pattern = f"\([+-]?([0-9]*[.][0-9]+),\s[+-]?([0-9]*[.][0-9]+)\)[\s]+\[Notes:[\s]+{note}\]\n"
+        pattern = rf"\([+-]?([0-9]*[.][0-9]+),\s[+-]?([0-9]*[.][0-9]+)\)[\s]+\[Notes:[\s]+{note}\]\n"
         match = re.search(pattern, footer)
         if match is not None:
             point = np.array([float(x) for x in match.groups()])
