@@ -45,7 +45,10 @@ class MonteCarloTrackOverlap:
             # Tracks overlap if the distance between them is less than r1+r2
             overlaps = distance < (xyd[i, 2] + xyd[:, 2])
 
-            # Remove this point's self-overlap
-            overlaps[i] = False
+            # Includes self-overlap, because that's how the Zylstra paper defines the numbering
+            num_overlaps[i] = np.sum(overlaps)
 
-            num_overlaps = np.sum(overlaps)
+        F1 = np.sum(num_overlaps == 1) / ntracks
+        F2 = np.sum(num_overlaps == 2) / ntracks
+
+        return F1, F2
