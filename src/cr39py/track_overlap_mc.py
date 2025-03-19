@@ -2,6 +2,7 @@ from multiprocessing import cpu_count
 
 import matplotlib.pyplot as plt
 import numpy as np
+import tqdm
 from joblib import Parallel, delayed
 from matplotlib.patches import Circle, Rectangle
 
@@ -9,13 +10,20 @@ rng = np.random.default_rng()
 
 
 class MonteCarloTrackOverlap:
-    def __init__(self):
+    def __init__(self, framesize=300, border=25, diameters_mean=10, diameters_std=0):
         # All dimensions in um
-        self.xy_range = (-300, 300)
-        self.border = 25
+        self.framesize = framesize
+        self.border = border
+        self.diameters_mean = diameters_mean
+        self.diameters_std = diameters_std
         self.diameters = np.arange(0.5, 20, 0.025)
-        self.diameters_mean = 5
-        self.diameters_std = 2
+
+    @property
+    def xy_range(self):
+        """
+        Range of x and y coordinates in um
+        """
+        return (-self.framesize, self.framesize)
 
     @property
     def frame_area(self):
@@ -72,19 +80,21 @@ class MonteCarloTrackOverlap:
         Computes the number tracks overlapping each track.
 
         If one track overlaps another, each track is counted as overlapping the other.
+
+        Tracks in the border region can overlap tracks inside the domain, but are not counted in the F1-F4+ values.
         """
 
         n_all = xyd.shape[0]
 
         # Find only the tracks that are within the domain
         mask = (
-            (xyd[:, 0] > self.xy_range[0])
-            & (xyd[:, 0] < self.xy_range[1])
-            & (xyd[:, 1] > self.xy_range[0])
-            & (xyd[:, 1] < self.xy_range[1])
+            (xyd[:, 0] >= self.xy_range[0])
+            & (xyd[:, 0] <= self.xy_range[1])
+            & (xyd[:, 1] >= self.xy_range[0])
+            & (xyd[:, 1] <= self.xy_range[1])
         )
         n_in_domain = np.sum(mask)
-        xyd_in_domain = xyd[mask, :]
+        n_out_of_domain = n_all - n_in_domain
 
         # For each track, find all overlapping tracks
         num_overlaps = np.zeros(n_all)
@@ -99,15 +109,17 @@ class MonteCarloTrackOverlap:
                 distance = np.hypot(xyd[:, 0] - xyd[i, 0], xyd[:, 1] - xyd[i, 1])
 
                 # Tracks overlap if the distance between them is less than r1+r2
-                overlaps = distance < (xyd[i, 2] + xyd[:, 2])
+                overlaps = distance <= (xyd[i, 2] / 2 + xyd[:, 2] / 2)
 
                 # Includes self-overlap, because that's how the Zylstra paper defines the numbering
                 num_overlaps[i] = np.sum(overlaps)
 
+        assert np.sum(~np.isnan(num_overlaps)) == n_in_domain
+
         F1 = np.nansum(num_overlaps == 1) / n_in_domain
         F2 = np.nansum(num_overlaps == 2) / n_in_domain
         F3 = np.nansum(num_overlaps == 3) / n_in_domain
-        F4plus = np.nansum(num_overlaps > 4) / n_in_domain
+        F4plus = np.nansum(num_overlaps >= 4) / n_in_domain
 
         Farr = np.array([F1, F2, F3, F4plus])
 
@@ -142,12 +154,16 @@ class MonteCarloTrackOverlap:
         results = np.array(_results).T
         return results
 
-    def run_curve(self, track_density: np.ndarray, nsamples=100):
+    def run_curve(self, track_densities: np.ndarray, nsamples=100):
         """
         Generate F1-F4+ curves for an array of track densities (in tracks/cm^2)
         """
-        Farr = np.zeros((4, track_density.size))
-        for i, track_density in enumerate(track_density):
+        Farr = np.zeros((4, track_densities.size))
+
+        for i in tqdm.tqdm(
+            range(track_densities.size), desc="Running track density curve"
+        ):
+            track_density = track_densities[i]
             ntracks = int(track_density * self.frame_area_with_border / 1e8)
             Farr[:, i] = self.run_samples(ntracks, nsamples).mean(axis=1)
 
@@ -158,10 +174,10 @@ class MonteCarloTrackOverlap:
 
         F1, F2, F3, F4plus = Farr
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(12, 12))
         ax.set_aspect("equal")
 
-        ax.set_title(f"F1={F1:.2f}, F2={F2:.2f}")
+        ax.set_title(f"F1={F1:.2f}, F2={F2:.2f}, F3={F3:.2f}, F4+={F4plus:.2f}")
 
         ax.set_xlim(self.xy_range[0] - self.border, self.xy_range[1] + self.border)
         ax.set_ylim(self.xy_range[0] - self.border, self.xy_range[1] + self.border)
@@ -191,11 +207,23 @@ class MonteCarloTrackOverlap:
 
             if np.isnan(num_overlaps[i]):
                 color = "purple"
-            elif num_overlaps[i] < 2:
-                color = "black"
+            # Color-code based on number of overlaps
             else:
-                color = "red"
+                colors = ["black", "red", "lime"]
+                ind = int(num_overlaps[i]) - 1
+                if ind <= 2:
+                    color = colors[ind]
+                else:
+                    color = "blue"
+
             circle = Circle(
-                (xyd[i, 0], xyd[i, 1]), xyd[i, 2], fill=False, edgecolor=color
+                (xyd[i, 0], xyd[i, 1]), xyd[i, 2] / 2, fill=False, edgecolor=color
             )
             ax.add_patch(circle)
+
+        ax.plot([], [], color="purple", label="Outside domain")
+        ax.plot([], [], color="black", label="F1")
+        ax.plot([], [], color="red", label="F2")
+        ax.plot([], [], color="lime", label="F3")
+        ax.plot([], [], color="blue", label="F4+")
+        ax.legend(loc="upper left")
