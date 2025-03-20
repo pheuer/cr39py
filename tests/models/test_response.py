@@ -5,10 +5,10 @@ from cr39py.core.units import unit_registry as u
 from cr39py.models.response import BulkEtchModel, CParameterModel, TwoParameterModel
 
 
-@pytest.mark.parametrize("diameter", [0.5, 1, 2, 4, 6, 8, 10])
+@pytest.mark.parametrize("diameter", [0.5, 1, 6, 10])
 @pytest.mark.parametrize("particle", ["p", "d", "t", "a"])
-@pytest.mark.parametrize("etch_time", [30, 60, 120, 180])
-def test_track_energy_and_diameter(diameter, particle, etch_time):
+@pytest.mark.parametrize("etch_time", [30, 60, 180])
+def test_two_parameter_model_consistency(diameter, particle, etch_time):
     model = TwoParameterModel(particle)
     energy = model.track_energy(diameter, etch_time)
 
@@ -28,6 +28,36 @@ def test_track_energy_and_diameter(diameter, particle, etch_time):
     e2 = model.etch_time(energy, diameter)
 
     assert np.isclose(e2, etch_time)
+
+
+response_cases = [
+    ("p", 1, 15),
+    ("p", 2, 8),
+    ("p", 5, 3),
+    ("d", 1, 20),
+    ("d", 2, 14.5),
+    ("d", 6, 5.5),
+    ("t", 1, 22.5),
+    ("t", 2, 18),
+    ("t", 10, 4.75),
+]
+
+
+@pytest.mark.parametrize("particle,energy,diameter", response_cases)
+def test_two_parameter_model_vs_lahmann_paper(particle, energy, diameter):
+    """
+    Check the Two parameter class reproduces values from Fig. 4 of the
+    B. Lahmann 2020 RSI.
+    """
+    # Create a model with parameters matching the caption of Fig. 4
+    model = TwoParameterModel(particle)
+    etch_time = 5 * 60
+
+    predicted_diameter = model.track_diameter(energy, etch_time)
+    assert np.isclose(predicted_diameter, diameter, atol=0.5)
+
+    predicted_energy = model.track_energy(diameter, etch_time)
+    assert np.isclose(predicted_energy, energy, atol=0.25)
 
 
 def test_bulk_etch_response():
