@@ -40,6 +40,6 @@ def test_Gaussian_diameter_distributions():
     mc = MonteCarloTrackOverlap(
         diameters_mean=diameters_mean, diameters_std=diameters_std
     )
-    xyd = mc.draw_tracks(100)
+    xyd = mc.draw_tracks(500)
     assert np.isclose(np.mean(xyd[:, 2]), diameters_mean, rtol=0.05)
     assert np.isclose(np.std(xyd[:, 2]), diameters_std, rtol=0.1)
