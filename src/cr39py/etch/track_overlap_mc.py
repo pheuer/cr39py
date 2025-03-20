@@ -109,16 +109,18 @@ class MonteCarloTrackOverlap:
         )
 
         # Draw diameters from the diameter distribution
-        if self.diameters_std == 0:
+        if self.diameter_distribution is not None:
+            diameter_dist = self.diameter_distribution
+        elif self.diameters_std == 0:
+            diameter_dist = None
+        else:
+            diameter_dist = self.gaussian_diameter_distribution
+
+        if diameter_dist is None:
             xyd[:, 2] = self.diameters_mean
         else:
-            if self.diameter_distribution is None:
-                diameter_dist = self.gaussian_diameter_distribution(self.daxis)
-            else:
-                diameter_dist = self.diameter_distribution
-
             xyd[:, 2] = _rng.choice(
-                self.diameters, size=ntracks, replace=True, p=diameter_dist
+                self.daxis, size=ntracks, replace=True, p=diameter_dist
             )
 
         return xyd
@@ -321,7 +323,7 @@ class MonteCarloTrackOverlap:
         ntracks = xyd.shape[0]
         for i in range(ntracks):
 
-            if np.isnan(num_overlaps[i]):
+            if np.isnan(num_overlaps[i]):  # pragma: no cover
                 color = "purple"
             # Color-code based on number of overlaps
             else:

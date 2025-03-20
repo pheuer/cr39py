@@ -47,9 +47,13 @@ def test_overlap_fraction_inputs():
     overlap_fraction(1, Fn=0.5)
     overlap_fraction(1, chi=0.5)
 
-    # Invalid Fnum
+    # Invalid Fnum: not on the list
     with pytest.raises(ValueError):
-        overlap_fraction(12, Fn=0.5)
+        overlap_fraction(12, chi=1)
+
+    # Invalid Fnum to interpolate Chi(Fn) from
+    with pytest.raises(ValueError):
+        overlap_fraction(2, Fn=0.5)
 
     # Both args
     with pytest.raises(ValueError):
