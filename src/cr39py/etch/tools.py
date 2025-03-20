@@ -80,7 +80,7 @@ def overlap_fraction(
     return curve
 
 
-def goal_diameter(fluence, desired_overlap_percentage=5, max_goal=10):
+def goal_diameter(fluence, desired_overlap_percentage=0.05, max_goal=10):
     """
     Calculates the ideal track diameter in um to achieve a given overlap percentage at a given fluence on CR-39.
 
@@ -90,7 +90,7 @@ def goal_diameter(fluence, desired_overlap_percentage=5, max_goal=10):
         The fluence on the CR-39 in 1/cm^2
 
     desired_overlap_percentage : float, optional
-        The desired maximum percentage of overlapping tracks. Default is 5, in which
+        The desired maximum percentage of overlapping tracks. Default is 0.05, in which
         case 5% of tracks will suffer some level of overlap with another track.
 
     max_goal : float, optional
@@ -102,6 +102,6 @@ def goal_diameter(fluence, desired_overlap_percentage=5, max_goal=10):
     goal_diameter: float
         The goal track diameter in um.
     """
-    goal_chi = overlap_fraction(Fnum=-1, Fn=desired_overlap_percentage * 1e-2)
+    goal_chi = overlap_fraction(Fnum=-1, Fn=desired_overlap_percentage)
     goal_d = np.sqrt(goal_chi / np.pi / (fluence * 1e-8))
     return np.clip(goal_d, a_min=0, a_max=max_goal)
