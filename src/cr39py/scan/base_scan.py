@@ -719,7 +719,7 @@ class Scan(ExportableClassMixin):
 
         self._reset_selected_tracks()
 
-    def track_energy(self, particle: str, statistic: str = "mean") -> u.Quantity:
+    def track_energy(self, particle: str, statistic: str | None = None) -> u.Quantity:
         """
         The energy of the currently selected tracks.
 
@@ -731,12 +731,13 @@ class Scan(ExportableClassMixin):
         particle : str
             One of ['p', 'd', 't', 'a']
 
-        statistic : str
-            One of ['mean', 'median']
+        statistic : str, optional
+            One of ['mean', 'median'] or None, in which case the full distribution
+            of eneriges is returned.
 
         Returns
         -------
-        energy : float
+        energy : np.ndarray
             Energy in MeV
 
 
@@ -748,7 +749,9 @@ class Scan(ExportableClassMixin):
         """
 
         d = self.selected_tracks[:, 2]
-        if statistic == "mean":
+        if statistic is None:
+            pass
+        elif statistic == "mean":
             d = np.mean(d)
         elif statistic == "median":
             d = np.median(d)

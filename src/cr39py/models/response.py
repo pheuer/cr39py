@@ -396,18 +396,9 @@ class TwoParameterModel:
     def n(self, n):
         self._n = n
 
-    @property
-    def vB(self):
-        """
-        The bulk etch velocity ``vB``  as defined in :cite:t:`Lahmann2020cr39`.
-        """
-        return self._vB
-
-    @vB.setter
-    def vB(self, vB):
-        self._vB = vB
-
-    def track_energy(self, diameter, etch_time, k=None, n=None):
+    def track_energy(
+        self, diameter: float | np.ndarray, etch_time: float, k=None, n=None
+    ):
         """
         The energy corresponding to a track of a given diameter.
 
@@ -415,8 +406,8 @@ class TwoParameterModel:
 
         Parameters
         ----------
-        diameter : float
-            Track diameter in um
+        diameter : np.ndarray|float
+            Track diameters in um
 
         etch_time : float
             Etch time in minutes.
@@ -424,13 +415,15 @@ class TwoParameterModel:
         Returns
         -------
 
-        energy : float | `~numpy.nan`
-            Energy of track in MeV, or `~numpy.nan` if there is no
-            valid energy that could have created a track of this diameter
+        energy : np.ndarray
+            Array of track energies in MeV, or `~numpy.nan` if there is no
+            valid energy that could have created a track of that diameter
             at this etch time.
         """
         k = self.k if k is None else k
         n = self.n if n is None else n
+
+        diameter = np.atleast_1d(diameter)
 
         etch_time_hrs = etch_time / 60
         energy = (
@@ -438,9 +431,17 @@ class TwoParameterModel:
             * self.A
             * ((2 * etch_time_hrs * self.vB / diameter - 1) / self.k) ** (1 / self.n)
         )
-        return energy if not np.iscomplex(energy) else np.nan
+        energy[np.iscomplex(energy)] = np.nan
 
-    def track_diameter(self, energy, etch_time, k=None, n=None):
+        return energy
+
+    def track_diameter(
+        self,
+        energy: float | np.ndarray,
+        etch_time: float,
+        k: float | None = None,
+        n: float | None = None,
+    ):
         """
         The diameter for a track after a given etch time.
 
@@ -448,7 +449,7 @@ class TwoParameterModel:
 
         Parameters
         ----------
-        energy : float
+        energy : float|np.ndarray
             Particle energy in MeV
 
         etch_time : float
@@ -457,9 +458,11 @@ class TwoParameterModel:
         Returns
         -------
 
-        diameter : float
-            Track diameter in um.
+        diameter : np.ndarray
+            Track diameters in um.
         """
+        energy = np.atleast_1d(energy)
+
         k = self.k if k is None else k
         n = self.n if n is None else n
 
@@ -472,7 +475,13 @@ class TwoParameterModel:
             / (1 + self.k * (energy / (self.Z**2 * self.A)) ** self.n)
         )
 
-    def etch_time(self, energy, desired_diameter, k=None, n=None):
+    def etch_time(
+        self,
+        energy: float | np.ndarray,
+        desired_diameter: float,
+        k: float | None = None,
+        n: float | None = None,
+    ):
         """
         The etch time required to bring a track to the desired diameter.
 
@@ -480,7 +489,7 @@ class TwoParameterModel:
 
         Parameters
         ----------
-        energy : float
+        energy : np.ndarray|float
             Particle energy in MeV
 
         desired_diameter : float
@@ -492,6 +501,8 @@ class TwoParameterModel:
         etch_time : float
             Total etch time, in minutes
         """
+        energy = np.atleast_1d(energy)
+
         k = self.k if k is None else k
         n = self.n if n is None else n
 
