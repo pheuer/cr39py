@@ -12,14 +12,14 @@ def overlap_fraction(
     chi: np.ndarray | None = None,
     Fn: np.ndarray | None = None,
 ) -> np.ndarray:
-    """
+    r"""
     Interpolate the overlap fraction curves from Monte-Carlo results.
 
     If `chi` is provided, it will be used to interpolate the overlap fraction curve Fn(chi).
     If `Fn` is provided, it will be used to interpolate the chi value for the given overlap fraction, chi(Fn).
 
-    :math:`$\chi=\eta \pi \bar{D}^2$` is defined in :cite:t:`Zylstra2012new` for fluence :math:`$\eta$` and
-    average track diameter :math:`$\bar{D}$`.
+    :math:`\chi=\eta \pi \bar{D}^2` is defined in :cite:t:`Zylstra2012new` for fluence :math:`\eta` and
+    average track diameter :math:`\bar{D}`.
 
     Fn is the track overlap curve for Fnum ``n``, where F1 is the number of tracks with no overlaps, F2 is the number of tracks with one overlap, etc.
     This definition is slightly different from the one in :cite:t:`Zylstra2012new`, where tracks in a cluster of three tracks,
@@ -29,15 +29,15 @@ def overlap_fraction(
     Parameters
     ----------
     Fnum : int
-       Fnum determines which curve will be interpolated. Options are:
-        - Fnum=1: Returns F1
-        - Fnum=2: Returns F2
-        - Fnum=3: Returns F3
-        - Fnum=4: Returns F4+
-        - Fnum=-1 (default): Returns 1-F1
+        Fnum determines which curve will be interpolated. Options are:
+            - Fnum=1: Returns F1
+            - Fnum=2: Returns F2
+            - Fnum=3: Returns F3
+            - Fnum=4: Returns F4+
+            - Fnum=-1 (default): Returns 1-F1
 
     chi : np.ndarray, optional
-        Normalized fluence :math:`$\chi$`. Provide this to interpolate the overlap fraction curve Fn(chi).
+        Normalized fluence :math:`\chi`. Provide this to interpolate the overlap fraction curve Fn(chi).
 
     Fn : np.ndarray, optional
         Overlap fraction. Provide this to interpolate the chi value for the given overlap fraction, chi(Fn).
@@ -81,7 +81,7 @@ def overlap_fraction(
 
 
 def goal_diameter(fluence, desired_overlap_percentage=0.05, max_goal=10):
-    """
+    r"""
     Calculates the ideal track diameter in um to achieve a given overlap percentage at a given fluence on CR-39.
 
     Parameters
