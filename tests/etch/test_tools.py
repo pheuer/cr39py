@@ -9,9 +9,9 @@ from cr39py.etch.tools import goal_diameter, overlap_fraction
 
 cases = [
     # Moderate/high fluence with a known value
-    (1e5, 5, 20, 4.06),
+    (1e5, 0.05, 20, 4.06),
     # Extremely low fluence and high overlap percentage to test max goal diameter
-    (1e2, 50, 5, 5),
+    (1e2, 0.5, 5, 5),
 ]
 
 
