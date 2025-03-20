@@ -48,10 +48,15 @@ def overlap_fraction(
     fcurve : np.ndarray
         Overlap fraction curve Fn(chi) or chi(Fn), depending on the input provided.
     """
-    if chi is None and F is None:
-        raise ValueError("Either chi or F must be provided.")
-    elif chi is not None and F is not None:
-        raise ValueError("Only one of chi or F can be provided.")
+    if chi is None and Fn is None:
+        raise ValueError("Either chi or Fn must be provided.")
+    elif chi is not None and Fn is not None:
+        raise ValueError("Only one of chi or Fn can be provided.")
+
+    if Fn is not None and Fnum not in [-1, 1, 4]:
+        raise ValueError(
+            "Chi can only be interpolated from Fn for monotonic curves, which are Fnum=-1, 1, or 4."
+        )
 
     file = data_dir / Path("cr39/F1-F4+.txt")
     arr = np.loadtxt(file, delimiter="\t", skiprows=1)
@@ -67,6 +72,9 @@ def overlap_fraction(
     if chi is not None:
         curve = np.interp(chi, _x, _y)
     elif Fn is not None:
+        # Make sure _y is sorted for interpolation
+        if Fnum in [1]:
+            _x, _y = np.flip(_x), np.flip(_y)
         curve = np.interp(Fn, _y, _x)
 
     return curve

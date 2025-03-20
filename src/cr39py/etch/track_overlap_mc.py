@@ -1,9 +1,11 @@
+"""The `~cr39py.etch.track_overlap_mc` module contains a Monte-Carlo tool for simulating track overlap on CR-39."""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tqdm
 from matplotlib.patches import Circle, Rectangle
 
-rng = np.random.default_rng()
+_rng = np.random.default_rng()
 
 
 class MonteCarloTrackOverlap:
@@ -95,12 +97,12 @@ class MonteCarloTrackOverlap:
         xyd = np.empty((ntracks, 3))
 
         # Draw spatially uniform positions in the plane
-        xyd[:, 0] = rng.uniform(
+        xyd[:, 0] = _rng.uniform(
             low=-self.framesize / 2 - self.border,
             high=self.framesize / 2 + self.border,
             size=ntracks,
         )
-        xyd[:, 1] = rng.uniform(
+        xyd[:, 1] = _rng.uniform(
             low=-self.framesize / 2 - self.border,
             high=self.framesize / 2 + self.border,
             size=ntracks,
@@ -115,7 +117,7 @@ class MonteCarloTrackOverlap:
             else:
                 diameter_dist = self.diameter_distribution
 
-            xyd[:, 2] = rng.choice(
+            xyd[:, 2] = _rng.choice(
                 self.diameters, size=ntracks, replace=True, p=diameter_dist
             )
 
