@@ -232,7 +232,7 @@ def read_cpsa(path: Path) -> TrackData:
             try:
                 line_decoded = line.decode("cp1250")
                 footer += line_decoded
-            except UnicodeDecodeError:
+            except UnicodeDecodeError:  # pragma: no cover
                 pass
 
         metadata["cpsa_footer"] = footer
