@@ -234,7 +234,7 @@ def read_cpsa(path: Path) -> TrackData:
                 footer += line_decoded
             except UnicodeDecodeError:
                 pass
-            
+
         metadata["cpsa_footer"] = footer
 
     # CPSA file now closed - post-process the data
