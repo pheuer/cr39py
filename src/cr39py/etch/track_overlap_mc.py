@@ -48,7 +48,7 @@ class MonteCarloTrackOverlap:
         self.diameters_mean = diameters_mean
         self.diameters_std = diameters_std
         self.daxis = daxis
-        self.diameter_distribution = None
+        self.diameter_distribution = diameter_distribution
 
     @property
     def frame_area(self):
@@ -76,7 +76,7 @@ class MonteCarloTrackOverlap:
 
     def draw_tracks(
         self,
-        ntracks: int,
+        ntracks: int | float,
     ) -> np.ndarray:
         """
         Draws a set of tracks with random positions and diameters.
@@ -86,14 +86,16 @@ class MonteCarloTrackOverlap:
 
         Parameters
         ----------
-        ntracks : int
-            Number of tracks to draw
+        ntracks : int|float
+            Number of tracks to draw. If a float is provided, it is cast to an int.
 
         Returns
         -------
         np.ndarray, (ntracks,3)
             (X,Y,Diameter) for each track
         """
+        ntracks = int(ntracks)
+
         xyd = np.empty((ntracks, 3))
 
         # Draw spatially uniform positions in the plane
@@ -243,7 +245,10 @@ class MonteCarloTrackOverlap:
         return results
 
     def run_curve(
-        self, track_densities: np.ndarray, nsamples: int, nworkers: int | None = None
+        self,
+        track_densities: np.ndarray,
+        nsamples: int | np.ndarray,
+        nworkers: int | None = None,
     ) -> np.ndarray:
         """
         Generate F1-F4+ curves for an array of track densities.
@@ -256,8 +261,11 @@ class MonteCarloTrackOverlap:
         track_densities : np.ndarray
             Array of track densities in tracks/cm^2.
 
-        nsamples : int
-            Number of samples to run for each track density.
+        nsamples : int | np.ndarray
+            Number of samples to run for each track density. If an integer is provided,
+            the same number of samples will be used for each track density. If an array is provided,
+            it must be the same length as track_densities. And the number of samples for each track
+            density will be taken from the array.
 
         nworkers : int, optional
             Number of parallel workers to use. If None, will use all available cores minus one.
@@ -269,12 +277,16 @@ class MonteCarloTrackOverlap:
         """
         Farr = np.zeros((4, track_densities.size))
 
+        # If nsamples is an int, convert to array of the same size as track_densities
+        if isinstance(nsamples, int):
+            nsamples = np.full(track_densities.size, nsamples)
+
         for i in tqdm.tqdm(
             range(track_densities.size), desc="Running track density curve"
         ):
             track_density = track_densities[i]
             ntracks = int(track_density * self.frame_area_with_border / 1e8)
-            Farr[:, i] = np.nanmean(self.run_samples(ntracks, nsamples), axis=1)
+            Farr[:, i] = np.nanmean(self.run_samples(ntracks, int(nsamples[i])), axis=1)
 
         return Farr
 

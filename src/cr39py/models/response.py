@@ -396,6 +396,17 @@ class TwoParameterModel:
     def n(self, n):
         self._n = n
 
+    @property
+    def vB(self):
+        """
+        The ``vB`` constant as defined in :cite:t:`Lahmann2020cr39`.
+        """
+        return self._vB
+
+    @vB.setter
+    def vB(self, vB):
+        self._vB = vB
+
     def track_energy(
         self, diameter: float | np.ndarray, etch_time: float, k=None, n=None
     ):
