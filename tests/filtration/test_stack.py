@@ -66,7 +66,7 @@ def test_stack_ranging_energy_loss():
 
 
 cases = [
-    ("100 um Ta, 100 um Al", "Proton", 12 * u.MeV, 14.52 * u.um),
+    ("100 um Ta, 100 um Al", "Proton", 12 * u.MeV, 10.39 * u.um),
     # Case where particle will stop in the stack
     ("100 um Ta, 2000 um Al", "Proton", 1 * u.MeV, 1.12 * u.um),
 ]

@@ -133,8 +133,8 @@ class Stack(ExportableClassMixin):
 
             E = l.range_down(particle, E, dx=dx)
 
-            if E <= 0 * E.u:
-                return 0 * E.u
+            if np.all(E.m) <= 0:
+                return E
         return E
 
     def reverse_ranging(
@@ -237,7 +237,7 @@ class Stack(ExportableClassMixin):
             E_in = l.range_down(particle, E_in)
 
             # If the particle has stopped, return the accumulated straggle
-            if E_in.m <= 0:
+            if np.all(E_in.m) <= 0:
                 return straggle
 
         return straggle

@@ -157,15 +157,8 @@ class Layer(ExportableClassMixin):
 
         """
 
-        # TODO: strip units within this calculation to make it faster?
-
-        # Find the peak of the stopping power curve
-        sp_peak = (
-            self.srim_data(particle).ion_energy[
-                np.argmax(self.srim_data(particle).dEdx_total)
-            ]
-            * u.eV
-        )
+        # Strip units for faster computation - return results in eV
+        E = np.atleast_1d(E.m_as(u.eV))
 
         # Get a cubic splines interpolator for the stopping power
         # in this layer
@@ -181,12 +174,14 @@ class Layer(ExportableClassMixin):
         # This is essentially numerically integrating the stopping power
         for ds in sublayers:
             # Interpolate the stopping power at the current energy
-            interpolated_stopping_power = sp_fcn(E.m_as(u.eV))
+            interpolated_stopping_power = sp_fcn(
+                E
+            )  # Interpolated stopping power is in kV/um
 
             if reverse:
                 interpolated_stopping_power *= -1
 
-            dE = interpolated_stopping_power * u.keV / u.um * (ds * u.um)
+            dE = interpolated_stopping_power * ds * 1e3  # dE in keV -> eV
 
             # TODO: Find a better way of detecting if dx is too large, or automatically determining
             # an appropriate dx
@@ -195,9 +190,11 @@ class Layer(ExportableClassMixin):
 
             # If energy is at or below zero, return 0.
             # The particle has stopped.
-            if E <= 0 * E.u:
-                return 0 * E.u
-        return E
+            E[E < 0] = 0
+            if np.all(E == 0):
+                return E * u.eV
+
+        return E * u.eV
 
     def projected_range(self, particle: str, E_in: u.Quantity) -> u.Quantity:
         """
@@ -243,17 +240,26 @@ class Layer(ExportableClassMixin):
         straggle : u.Quantity
             Lateral straggle of the particle in the stack.
         """
+        E_in = np.atleast_1d(E_in)
+
         straggle_interp = self.srim_data(particle).lateral_straggle_interpolator
 
         E_out = self.range_down(particle, E_in)
 
-        # If particle has stopped, return the total straggle.
-        if E_out.m <= 0:
-            return straggle_interp(E_in.m_as(u.eV)) * u.m
-        # Otherwise return just the straggle in this range of energies
-        return (
-            straggle_interp(E_in.m_as(u.eV)) - straggle_interp(E_out.m_as(u.eV))
-        ) * u.m
+        stopped_i = E_out.m <= 0
+        straggle = np.empty(E_out.shape) * u.um
+
+        # The SRIM files include the full straggle assuming the particle stops
+        # So, if the particle stops, we can just use the full straggle
+        full_straggle = straggle_interp(E_in.m_as(u.eV)) * u.m
+        straggle[stopped_i] = full_straggle[stopped_i]
+
+        # If the particle doesn't stop, we need to subtract the straggle
+        # the SRIM file gives for the remaining energy
+        remaining_straggle = straggle_interp(E_out[~stopped_i].m_as(u.eV)) * u.m
+        straggle[~stopped_i] = full_straggle[~stopped_i] - remaining_straggle
+
+        return straggle
 
     def projected_depth_for_energy(
         self, particle: str, E_in: u.Quantity, E_at: u.Quantity
