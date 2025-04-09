@@ -226,10 +226,15 @@ def read_cpsa(path: Path) -> TrackData:
 
         # Read the footer, save the whole string into the metadata
         # This contains a bunch of additional metadata
-        footer = b""
+        footer = ""
         for line in file:
-            footer += line
-        footer = footer.decode("cp1250")
+            # Attempt to decode line - if successful append to the footer
+            try:
+                line_decoded = line.decode("cp1250")
+                footer += line_decoded
+            except UnicodeDecodeError:  # pragma: no cover
+                pass
+
         metadata["cpsa_footer"] = footer
 
     # CPSA file now closed - post-process the data
