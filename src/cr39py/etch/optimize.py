@@ -12,6 +12,24 @@ from cr39py.models.response import TwoParameterModel
 
 
 class EtchTimeOptimizer:
+    """
+    Simulates the development of the diameter distribution with etch time to identify the optimal etch time.
+
+    Parameters
+    ----------
+    energy_mean : `~cr39py.core.units.Quantity`
+        Mean energy of the input energy distribution in MeV.
+
+    energy_std : `~cr39py.core.units.Quantity`
+        Standard deviation of the input energy distribution in MeV.
+
+    filterstack : `~cr39py.filtration.stack.Stack` or `~cr39py.filtration.layer.Layer`
+        The Stack or Layer that the particles filter through, up to the scan surface.
+
+    particle : str, optional
+        The type of particle to range. Default is 'proton'.
+
+    """
 
     def __init__(
         self,
@@ -111,7 +129,7 @@ class EtchTimeOptimizer:
         plot=False,
     ):
         """
-        Find the optimal etch time to get as much signal as possible in
+        Finds the optimal etch time to get as much signal as possible in
         the diameter zone.
 
         Parameters
