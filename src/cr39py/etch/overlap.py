@@ -9,6 +9,37 @@ from scipy.interpolate import interpn
 from cr39py.core.data import data_dir
 
 
+def mrn_distribution(
+    diameter: np.ndarray | float, maxd: float, sigma: float
+) -> np.ndarray:
+    """
+    The Modified Reciprocal Normal (MRN) track probability distribution function.
+
+    This distribution function is a good fit for the diameter of tracks formed in CR-39 by
+    a population of particles with an initially Gaussian energy distribution that have
+    passed through some filtration prior to the CR-39.
+    The sum of the distribution is normalized to 1.
+
+    Parameters
+    ----------
+    diameter : np.ndarray|float
+        Track diameter in um.
+    maxd : float
+        Most probable diameter of the track diameter distribution, in um.
+    sigma : float
+        Width parameter of the track diameter distribution, in um.
+
+    Returns
+    -------
+    pdf : np.ndarray
+        Probability for each track diameter.
+    """
+
+    dist = np.exp(-((maxd / diameter - 1) ** 2) / 2 / sigma**2)
+    dist /= np.sum(dist)
+    return dist
+
+
 def single_diameter_overlap_fraction(
     Fnum: int,
     chi: np.ndarray | None = None,
