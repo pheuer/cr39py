@@ -8,11 +8,12 @@ import numpy as np
 
 from cr39py.core.exportable_class import ExportableClassMixin, saveable_class
 from cr39py.core.units import unit_registry as u
+from cr39py.filtration._layerlike import LayerLike
 from cr39py.filtration.layer import Layer
 
 
 @saveable_class()
-class Stack(ExportableClassMixin):
+class Stack(ExportableClassMixin, LayerLike):
     r"""
     An ordered list of `~cr39py.filtration.layer.Layer` objects representing a stack of filter materials.
 

@@ -8,11 +8,12 @@ from scipy.integrate import cumulative_trapezoid
 
 from cr39py.core.exportable_class import ExportableClassMixin, saveable_class
 from cr39py.core.units import unit_registry as u
+from cr39py.filtration._layerlike import LayerLike
 from cr39py.filtration.srim import SRIMData
 
 
 @saveable_class()
-class Layer(ExportableClassMixin):
+class Layer(ExportableClassMixin, LayerLike):
     r"""
     A layer in a detector stack stack. The layer could either be an active
     layer (a piece of film or other recording media)
