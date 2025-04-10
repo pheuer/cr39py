@@ -5,6 +5,14 @@ from cr39py.core.units import unit_registry as u
 from cr39py.models.response import BulkEtchModel, CParameterModel, TwoParameterModel
 
 
+def test_two_parameter_model_attrs():
+    model = TwoParameterModel("p")
+    for attr in ["n", "k", "vB"]:
+        assert hasattr(model, attr), f"Model does not have attribute {attr}"
+        setattr(model, attr, 1.0)  # Set the attribute to a test value
+        assert getattr(model, attr) == 1.0, f"Model attribute {attr} not set correctly"
+
+
 @pytest.mark.parametrize("diameter", [0.5, 1, 6, 10])
 @pytest.mark.parametrize("particle", ["p", "d", "t", "a"])
 @pytest.mark.parametrize("etch_time", [30, 60, 180])
@@ -89,7 +97,7 @@ def test_cparameter():
     assert np.isclose(D_raw, D_raw2, rtol=0.05)
 
 
-@pytest.mark.parametrize("c,dmax", [(0.509, 0.84), (1.2, 21), (0.6, 10)])
+@pytest.mark.parametrize("c,dmax", [(0.509, 0.84), (1.2, 21), (0.6, 10), (0.6, 15)])
 def test_cparameter_model_different_values(c, dmax):
     model = CParameterModel(c, dmax)
     diameter = model.track_diameter(2)

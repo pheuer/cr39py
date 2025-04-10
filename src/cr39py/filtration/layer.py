@@ -215,6 +215,7 @@ class Layer(ExportableClassMixin, LayerLike):
         -------
         R : u.Quantity
             Projected range of the particle in the layer.
+
         """
         prjrng_interp = self.srim_data(particle).projected_range_interpolator
         return prjrng_interp(E_in.m_as(u.eV)) * u.m
@@ -240,6 +241,7 @@ class Layer(ExportableClassMixin, LayerLike):
         -------
         straggle : u.Quantity
             Lateral straggle of the particle in the stack.
+
         """
         E_in = np.atleast_1d(E_in)
 

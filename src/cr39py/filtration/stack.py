@@ -191,11 +191,9 @@ class Stack(ExportableClassMixin, LayerLike):
         E_in : u.Quantity
             Energy of the particle before the stack.
 
-
         dx : u.Quantity
             The spatial resolution of the numerical integration of the
             stopping power. Defaults to 1 μm.
-
 
         Returns
         -------
