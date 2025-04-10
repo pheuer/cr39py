@@ -15,7 +15,9 @@ from cr39py.filtration.srim import SRIMData
 @saveable_class()
 class Layer(ExportableClassMixin, LayerLike):
     r"""
-    A layer in a detector stack stack. The layer could either be an active
+    A layer in a detector stack stack.
+
+    The layer could either be an active
     layer (a piece of film or other recording media)
     or an inactive layer (a filter or inactive part of the film, such as
     a substrate )
@@ -106,7 +108,8 @@ class Layer(ExportableClassMixin, LayerLike):
         return f"{self.thickness.m_as(u.um):.1f} um {self.material}"
 
     def srim_data(self, particle: str):
-        """`~cr39py.filtration.srim.SRIMData` object for this layer and given particle.
+        """
+        `~cr39py.filtration.srim.SRIMData` object for this layer and given particle.
 
         Parameters
         ----------

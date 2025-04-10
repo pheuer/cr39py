@@ -50,6 +50,7 @@ class LayerLike:
 
         Parameters
         ----------
+
         particle : str, optional
             The type of particle to range. Default is 'proton'.
 
@@ -69,13 +70,10 @@ class LayerLike:
         -------
 
         coeffs : list[3]
-            The coefficients of the fitted model.
-            - The first element is the minimum input energy corresponding to
-                the eout_cutoff. When eout_cutoff is set to the CR-39 detection
-                threshold, this represents the lowest input  energy that will
-                be detectable
-            - The second and third elements are the scaling factor and exponent
-                of the fitted model, respectively.
+            The coefficients of the fitted model. The first element is the minimum input energy corresponding to
+            the eout_cutoff. When eout_cutoff is set to the CR-39 detection threshold, this represents the lowest input
+            energy that will be detectable. The second and third elements are the scaling factor and exponent
+            of the fitted model, respectively.
 
         model : callable
             A function that takes input energy in MeV and returns the output

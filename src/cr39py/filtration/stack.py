@@ -28,7 +28,8 @@ class Stack(ExportableClassMixin, LayerLike):
 
     @classmethod
     def from_layers(cls, *args):
-        """Creates a stack from a sequence of Layers.
+        """
+        Creates a stack from a sequence of Layers.
 
         Each layer should be provided as a separate argument.
         """
@@ -45,7 +46,8 @@ class Stack(ExportableClassMixin, LayerLike):
         return obj
 
     def add_layer(self, layer: Layer | str):
-        """Appends a layer to the stack.
+        """
+        Appends a layer to the stack.
 
         Parameters
         ----------

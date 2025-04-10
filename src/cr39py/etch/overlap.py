@@ -20,7 +20,7 @@ from cr39py.core.data import data_dir
 def mrn_distribution(
     diameter: np.ndarray | float, maxd: float, sigma: float
 ) -> np.ndarray:
-    """
+    r"""
     The Modified Reciprocal Normal (MRN) track probability distribution function.
 
     .. math::
@@ -45,6 +45,7 @@ def mrn_distribution(
     -------
     pdf : np.ndarray
         Probability for each track diameter.
+
     """
 
     dist = np.exp(-((maxd / diameter - 1) ** 2) / 2 / sigma**2)
@@ -91,6 +92,7 @@ def single_diameter_overlap_fraction(
     -------
     fcurve : np.ndarray
         Overlap fraction curve Fn(chi) or chi(Fn), depending on the input provided.
+
     """
     if chi is None and Fn is None:
         raise ValueError("Either chi or Fn must be provided.")
@@ -159,6 +161,7 @@ def mrn_overlap_fraction(
     -------
     fcurve : np.ndarray
         Overlap fraction curve Fn(fluence).
+
     """
 
     path = data_dir / Path("track_overlap/fcurves_mrn_distribution.h5")
