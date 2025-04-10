@@ -76,8 +76,8 @@ class LayerLike:
             of the fitted model, respectively.
 
         model : callable
-            A function that takes input energy in MeV and returns the output
-            energy in MeV. The function returns NaN for output energies below the
+            A function that takes input energy as a u.Quantity and returns the output
+            energy as a u.Quantity. The function returns NaN for output energies below the
             eout_cutoff.
 
 
@@ -106,7 +106,12 @@ class LayerLike:
             ein_axis = np.linspace(0, ein_max, num=200)
             ax.scatter(emin, eout_cutoff, label="Eout cutoff", color="lime")
             ax.set_title(f"Eout={popt[0]:.2f}(Ein - {emin:.2f})^{popt[1]:.2f}")
-            ax.plot(ein_axis, _model(ein_axis, *popt), label="Fit", color="C1")
+            ax.plot(
+                ein_axis,
+                _model(ein_axis * u.MeV, *popt).m_as(u.MeV),
+                label="Fit",
+                color="C1",
+            )
             ax.legend(loc="upper left")
 
         coeff = [emin, *popt]

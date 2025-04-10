@@ -72,7 +72,7 @@ class EtchTimeOptimizer:
         """
         Eout axis including NaN for stopped energies
         """
-        return self.reduced_ranging_model(self.ein_axis)
+        return self.reduced_ranging_model(self.ein_axis * u.MeV).m_as(u.MeV)
 
     @cached_property
     def eout_axis(self):
@@ -178,7 +178,7 @@ class EtchTimeOptimizer:
 
             # Interpolate the 1-F1 value
             # TODO: Set  bounds so sigma doesn't go negative? Or this works fine...
-            overlap[i] = mrn_overlap_fraction(-1, fluence, maxd, np.abs(sigma))
+            overlap[i] = mrn_overlap_fraction(-1, fluence, maxd, np.abs(sigma))[0]
 
         # Find the etch time for the most signal
         max_signal_time = etch_times[np.argmax(signals)]
