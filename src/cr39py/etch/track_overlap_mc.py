@@ -5,50 +5,55 @@ import numpy as np
 import tqdm
 from matplotlib.patches import Circle, Rectangle
 
-_rng = np.random.default_rng()
-
 
 class MonteCarloTrackOverlap:
+    """
+    A Monte-Carlo (MC) simulation to calculate the fraction of overlapped tracks on CR-39.
+
+    The simulation covers a single microscope 'frame' of the CR-39 scan, as well as a border region to avoid edge effects.
+    Tracks in the border region can overlap tracks in the domain, but are otherwise not counted in the output.
+
+    Parameters
+    ----------
+    framesize : float, optional
+        Size of the CR-39 frame is (framesize, framesize) in um.
+    border : float, optional
+        The thickness of the border region in um. The border should be slightly larger than the
+        largest track diameter to avoid edge effects.
+    diameters_mean : float, optional
+        The mean diameter of the tracks in um.
+    diameters_std : float, optional
+        The standard deviation of the track diameters in um. The default is 0 um, in which case all tracks
+        are set to the mean diameter.
+    daxis : np.ndarray, optional
+        The array of diameters to use for the diameter distribution, in um.
+    diameter_distribution : np.ndarray, optional
+        The probability distribution of diameters to use for the simulation, over the diameters in ``daxis``.
+        If not provided, a Gaussian distribution centered at ``diameters_mean`` with standard deviation ``diameters_std`` will be used.
+    random_seed : int, optional
+        The seed for the random number generator. If not provided, a random seed will be used.
+        This is useful for reproducibility of the simulation results.
+    """
+
     def __init__(
         self,
-        framesize: float = 300,
+        framesize: float = 600,
         border: float = 25,
         diameters_mean: float = 10,
         diameters_std: float = 0,
         daxis=np.arange(0.5, 20, 0.025),
         diameter_distribution=None,
+        random_seed=None,
     ) -> None:
-        """
-        A Monte-Carlo (MC) simulation to calculate the fraction of overlapped tracks on CR-39.
-
-        The simulation covers a single microscope 'frame' of the CR-39 scan, as well as a border region to avoid edge effects.
-        Tracks in the border region can overlap tracks in the domain, but are otherwise not counted in the output.
-
-        Parameters
-        ----------
-        framesize : float, optional
-            Size of the CR-39 frame is (framesize, framesize) in um. The default is 300 um.
-        border : float, optional
-            The thickness of the border region in um. The default is 25 um.
-        diameters_mean : float, optional
-            The mean diameter of the tracks in um. The default is 10 um.
-        diameters_std : float, optional
-            The standard deviation of the track diameters in um. The default is 0 um, in which case all tracks
-            are set to the mean diameter.
-        daxis : np.ndarray, optional
-            The array of diameters to use for the diameter distribution, in um. The default is np.arange(0.5, 20, 0.025).
-        diameter_distribution : np.ndarray, optional
-            The probability distribution of diameters to use for the simulation, over the diameters in ``daxis``.
-            If not provided, a Gaussian distribution centered at ``diameters_mean`` with standard deviation ``diameters_std`` will be used.
-
-        """
 
         self.framesize = framesize
         self.border = border
         self.diameters_mean = diameters_mean
         self.diameters_std = diameters_std
         self.daxis = daxis
-        self.diameter_distribution = None
+        self.diameter_distribution = diameter_distribution
+
+        self._rng = np.random.default_rng(seed=random_seed)
 
     @property
     def frame_area(self):
@@ -76,7 +81,7 @@ class MonteCarloTrackOverlap:
 
     def draw_tracks(
         self,
-        ntracks: int,
+        ntracks: int | float,
     ) -> np.ndarray:
         """
         Draws a set of tracks with random positions and diameters.
@@ -86,23 +91,25 @@ class MonteCarloTrackOverlap:
 
         Parameters
         ----------
-        ntracks : int
-            Number of tracks to draw
+        ntracks : int|float
+            Number of tracks to draw. If a float is provided, it is cast to an int.
 
         Returns
         -------
         np.ndarray, (ntracks,3)
             (X,Y,Diameter) for each track
         """
+        ntracks = int(ntracks)
+
         xyd = np.empty((ntracks, 3))
 
         # Draw spatially uniform positions in the plane
-        xyd[:, 0] = _rng.uniform(
+        xyd[:, 0] = self._rng.uniform(
             low=-self.framesize / 2 - self.border,
             high=self.framesize / 2 + self.border,
             size=ntracks,
         )
-        xyd[:, 1] = _rng.uniform(
+        xyd[:, 1] = self._rng.uniform(
             low=-self.framesize / 2 - self.border,
             high=self.framesize / 2 + self.border,
             size=ntracks,
@@ -119,7 +126,7 @@ class MonteCarloTrackOverlap:
         if diameter_dist is None:
             xyd[:, 2] = self.diameters_mean
         else:
-            xyd[:, 2] = _rng.choice(
+            xyd[:, 2] = self._rng.choice(
                 self.daxis, size=ntracks, replace=True, p=diameter_dist
             )
 
@@ -243,7 +250,10 @@ class MonteCarloTrackOverlap:
         return results
 
     def run_curve(
-        self, track_densities: np.ndarray, nsamples: int, nworkers: int | None = None
+        self,
+        track_densities: np.ndarray,
+        nsamples: int | np.ndarray,
+        nworkers: int | None = None,
     ) -> np.ndarray:
         """
         Generate F1-F4+ curves for an array of track densities.
@@ -256,8 +266,11 @@ class MonteCarloTrackOverlap:
         track_densities : np.ndarray
             Array of track densities in tracks/cm^2.
 
-        nsamples : int
-            Number of samples to run for each track density.
+        nsamples : int | np.ndarray
+            Number of samples to run for each track density. If an integer is provided,
+            the same number of samples will be used for each track density. If an array is provided,
+            it must be the same length as track_densities. And the number of samples for each track
+            density will be taken from the array.
 
         nworkers : int, optional
             Number of parallel workers to use. If None, will use all available cores minus one.
@@ -269,12 +282,16 @@ class MonteCarloTrackOverlap:
         """
         Farr = np.zeros((4, track_densities.size))
 
+        # If nsamples is an int, convert to array of the same size as track_densities
+        if isinstance(nsamples, int):
+            nsamples = np.full(track_densities.size, nsamples)
+
         for i in tqdm.tqdm(
             range(track_densities.size), desc="Running track density curve"
         ):
             track_density = track_densities[i]
             ntracks = int(track_density * self.frame_area_with_border / 1e8)
-            Farr[:, i] = np.nanmean(self.run_samples(ntracks, nsamples), axis=1)
+            Farr[:, i] = np.nanmean(self.run_samples(ntracks, int(nsamples[i])), axis=1)
 
         return Farr
 

@@ -8,11 +8,12 @@ import numpy as np
 
 from cr39py.core.exportable_class import ExportableClassMixin, saveable_class
 from cr39py.core.units import unit_registry as u
+from cr39py.filtration._layerlike import LayerLike
 from cr39py.filtration.layer import Layer
 
 
 @saveable_class()
-class Stack(ExportableClassMixin):
+class Stack(ExportableClassMixin, LayerLike):
     r"""
     An ordered list of `~cr39py.filtration.layer.Layer` objects representing a stack of filter materials.
 
@@ -27,7 +28,8 @@ class Stack(ExportableClassMixin):
 
     @classmethod
     def from_layers(cls, *args):
-        """Creates a stack from a sequence of Layers.
+        """
+        Creates a stack from a sequence of Layers.
 
         Each layer should be provided as a separate argument.
         """
@@ -44,7 +46,8 @@ class Stack(ExportableClassMixin):
         return obj
 
     def add_layer(self, layer: Layer | str):
-        """Appends a layer to the stack.
+        """
+        Appends a layer to the stack.
 
         Parameters
         ----------
@@ -133,8 +136,8 @@ class Stack(ExportableClassMixin):
 
             E = l.range_down(particle, E, dx=dx)
 
-            if E <= 0 * E.u:
-                return 0 * E.u
+            if np.all(E.m) <= 0:
+                return E
         return E
 
     def reverse_ranging(
@@ -190,11 +193,9 @@ class Stack(ExportableClassMixin):
         E_in : u.Quantity
             Energy of the particle before the stack.
 
-
         dx : u.Quantity
             The spatial resolution of the numerical integration of the
             stopping power. Defaults to 1 μm.
-
 
         Returns
         -------
@@ -237,7 +238,7 @@ class Stack(ExportableClassMixin):
             E_in = l.range_down(particle, E_in)
 
             # If the particle has stopped, return the accumulated straggle
-            if E_in.m <= 0:
+            if np.all(E_in.m) <= 0:
                 return straggle
 
         return straggle

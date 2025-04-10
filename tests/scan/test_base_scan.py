@@ -134,9 +134,13 @@ def test_manipulate_cuts(cr39scan):
     cr39scan.replace_cut(0, Cut(cmin=20))
 
 
-@pytest.mark.parametrize("statistic", ["mean", "median"])
+@pytest.mark.parametrize("statistic", [None, "mean", "median"])
 def test_track_energy(cr39scan, statistic):
-    cr39scan.track_energy("D", statistic)
+    e = cr39scan.track_energy("D", statistic)
+    if statistic == None:
+        assert e.shape == (cr39scan.ntracks,)
+    else:
+        assert e.size == 1
 
 
 @pytest.mark.parametrize(

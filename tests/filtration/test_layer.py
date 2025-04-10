@@ -80,6 +80,14 @@ def test_layer_ion_ranging(
     assert np.isclose(eout, expected, rtol=0.03)
 
 
+def test_layer_ranging_array_of_energies():
+    """Test that the ranging function can take an array of energies"""
+    l = Layer.from_string("200 um Al")
+    Ein = np.array([14.7, 10.0, 8.0]) * u.MeV
+    Eout = l.range_down("Proton", Ein)
+    assert Eout.shape == Ein.shape
+
+
 @pytest.mark.parametrize("layer,particle,expected,Eout", cases)
 def test_layer_remove_ranging(layer, particle, expected, Eout):
     """Compare the calculated reverse-ranging energies to values

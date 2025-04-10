@@ -31,8 +31,10 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
-    "sphinx.ext.viewcode",
+    # Extension must go before viewcode to avoid this error??
+    # https://github.com/readthedocs/sphinx-autoapi/issues/422
     "autoapi.extension",
+    "sphinx.ext.viewcode",
     "nbsphinx",
     "sphinxcontrib.bibtex",
 ]
@@ -43,6 +45,7 @@ autoapi_type = ["python"]
 autoapi_member_order = "bysource"
 autoapi_options = [
     "members",
+    "inherited-members",
     "undoc-members",
     "show-module-summary",
     "special-members",

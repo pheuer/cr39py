@@ -719,7 +719,7 @@ class Scan(ExportableClassMixin):
 
         self._reset_selected_tracks()
 
-    def track_energy(self, particle: str, statistic: str = "mean") -> u.Quantity:
+    def track_energy(self, particle: str, statistic: str | None = None) -> u.Quantity:
         """
         The energy of the currently selected tracks.
 
@@ -731,12 +731,13 @@ class Scan(ExportableClassMixin):
         particle : str
             One of ['p', 'd', 't', 'a']
 
-        statistic : str
-            One of ['mean', 'median']
+        statistic : str, optional
+            One of ['mean', 'median'] or None, in which case the full distribution
+            of eneriges is returned.
 
         Returns
         -------
-        energy : float
+        energy : np.ndarray
             Energy in MeV
 
 
@@ -748,7 +749,9 @@ class Scan(ExportableClassMixin):
         """
 
         d = self.selected_tracks[:, 2]
-        if statistic == "mean":
+        if statistic is None:
+            pass
+        elif statistic == "mean":
             d = np.mean(d)
         elif statistic == "median":
             d = np.median(d)
@@ -773,7 +776,11 @@ class Scan(ExportableClassMixin):
         ylim: tuple[float, float] | None = None,
     ) -> tuple[np.ndarray]:
         r"""
-        Create a histogram of the currently selected track data
+        Create a histogram of the currently selected track data.
+
+        If the ``quantity`` keyword is set, the array returned
+        is the mean of that quantity in each frame, rather than the
+        number of particles in the frame.
 
         The following quantities can be used as axes or quantities:
         - 'X': x position
@@ -783,8 +790,7 @@ class Scan(ExportableClassMixin):
         - 'E': ecentricity
         - 'Z' : z position/lens position during scan
 
-
-        Histograms of the following composite quantities can also be made
+        Arrays of the following composite quantities can also be made
         - CHI : The ``chi`` track overlap parameter from :cite:t:`Zylstra2012new`
         - F2 : The ``F2`` track overlap parameter from :cite:t:`Zylstra2012new`
         - 'TRACK DENSITY' : The number of tracks per cm^2 in each cell
@@ -893,7 +899,12 @@ class Scan(ExportableClassMixin):
         r"""
         The Zylstra overlap parameter ``chi`` for each cell.
 
-        As defined in :cite:t:`Zylstra2012new`.
+        .. math::
+           \chi = \eta \pi \bar{D}^2
+
+        As defined in :cite:t:`Zylstra2012new`, where :math:`\eta` is the
+        track density in tracks/cm^2 and :math:`\bar{D}` is the average
+        track diameter in cm.
 
         Only includes currently selected tracks.
 
