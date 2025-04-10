@@ -23,6 +23,10 @@ def mrn_distribution(
     """
     The Modified Reciprocal Normal (MRN) track probability distribution function.
 
+    .. math::
+
+            P(d) \propto \exp[-\frac{(d_{max}/d-1)^2}{2\sigma^2}]
+
     This distribution function is a good fit for the diameter of tracks formed in CR-39 by
     a population of particles with an initially Gaussian energy distribution that have
     passed through some filtration prior to the CR-39.
