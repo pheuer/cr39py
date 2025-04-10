@@ -32,7 +32,7 @@ class LayerLike:
         ein_max: u.Quantity = 20 * u.MeV,
         plot=True,
     ):
-        """
+        r"""
         A reduced model for the ranging of a particle through the stack or layer.
 
         The model is:
