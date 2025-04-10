@@ -436,12 +436,17 @@ class TwoParameterModel:
 
         diameter = np.atleast_1d(diameter)
 
+        # Cast diameter as complex to avoid warnings when taking powers of negative numbers
+        diameter = np.asarray(diameter, dtype=np.complex128)
+
         etch_time_hrs = etch_time / 60
         energy = (
             self.Z**2
             * self.A
             * ((2 * etch_time_hrs * self.vB / diameter - 1) / self.k) ** (1 / self.n)
         )
+
+        # Complex energies are invalid solutions to the equation - the model doesn't apply in that case
         energy[np.iscomplex(energy)] = np.nan
 
         return energy
