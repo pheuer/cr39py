@@ -15,6 +15,7 @@ from cr39py.core.units import u
 
 
 def _eout_model(ein, estart, a, n):
+    ein = np.atleast_1d(ein)
     res = np.zeros(ein.shape)
     nonzero = ein >= estart
     res[nonzero] = a * (ein[nonzero] - estart) ** n + 1
@@ -30,7 +31,7 @@ class LayerLike:
         particle: str = "proton",
         eout_cutoff: u.Quantity = 1 * u.MeV,
         ein_max: u.Quantity = 20 * u.MeV,
-        plot=True,
+        plot=False,
     ):
         r"""
         A reduced model for the ranging of a particle through the stack or layer.
@@ -84,9 +85,10 @@ class LayerLike:
 
         """
         ein_max = ein_max.m_as(u.MeV)
+        eout_cutoff = eout_cutoff.m_as(u.MeV)
 
         # Find the zero energy by ranging up a 1 MeV proton through the stack
-        emin = self.reverse_ranging(particle, 1 * u.MeV).m_as(u.MeV)[0]
+        emin = self.reverse_ranging(particle, eout_cutoff * u.MeV).m_as(u.MeV)[0]
 
         # Range down a few points across the selected range
         e_in = np.linspace(emin, ein_max, 10)  # MeV
@@ -100,11 +102,15 @@ class LayerLike:
 
         if plot:
             fig, ax = plt.subplots()
+            ax.set_xlabel("E_in (MeV)")
+            ax.set_ylabel("E_out (MeV)")
+            ax.scatter(e_in, e_out, label="Data", color="C0")
             ein_axis = np.linspace(0, ein_max, num=200)
-            ax.scatter(e_in, e_out, label="Data")
+            ax.scatter(emin, eout_cutoff, label="Eout cutoff", color="lime")
             ax.set_title(f"Eout={popt[0]:.2f}(Ein - {emin:.2f})^{popt[1]:.2f}")
-            ax.plot(ein_axis, _model(ein_axis, *popt), label="Fitted curve")
+            ax.plot(ein_axis, _model(ein_axis, *popt), label="Fit", color="C1")
+            ax.legend(loc="upper left")
 
         coeff = [emin, *popt]
-        eout_model = lambda e: _model(e, *popt)
+        eout_model = lambda e: _model(e.m_as(u.MeV), *popt) * u.MeV
         return coeff, eout_model
