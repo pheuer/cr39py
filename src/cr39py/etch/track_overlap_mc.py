@@ -5,8 +5,6 @@ import numpy as np
 import tqdm
 from matplotlib.patches import Circle, Rectangle
 
-_rng = np.random.default_rng()
-
 
 class MonteCarloTrackOverlap:
     def __init__(
@@ -17,6 +15,7 @@ class MonteCarloTrackOverlap:
         diameters_std: float = 0,
         daxis=np.arange(0.5, 20, 0.025),
         diameter_distribution=None,
+        random_seed=None,
     ) -> None:
         """
         A Monte-Carlo (MC) simulation to calculate the fraction of overlapped tracks on CR-39.
@@ -40,6 +39,9 @@ class MonteCarloTrackOverlap:
         diameter_distribution : np.ndarray, optional
             The probability distribution of diameters to use for the simulation, over the diameters in ``daxis``.
             If not provided, a Gaussian distribution centered at ``diameters_mean`` with standard deviation ``diameters_std`` will be used.
+        random_seed : int, optional
+            The seed for the random number generator. If not provided, a random seed will be used.
+            This is useful for reproducibility of the simulation results.
 
         """
 
@@ -49,6 +51,8 @@ class MonteCarloTrackOverlap:
         self.diameters_std = diameters_std
         self.daxis = daxis
         self.diameter_distribution = diameter_distribution
+
+        self._rng = np.random.default_rng(seed=random_seed)
 
     @property
     def frame_area(self):
@@ -99,12 +103,12 @@ class MonteCarloTrackOverlap:
         xyd = np.empty((ntracks, 3))
 
         # Draw spatially uniform positions in the plane
-        xyd[:, 0] = _rng.uniform(
+        xyd[:, 0] = self._rng.uniform(
             low=-self.framesize / 2 - self.border,
             high=self.framesize / 2 + self.border,
             size=ntracks,
         )
-        xyd[:, 1] = _rng.uniform(
+        xyd[:, 1] = self._rng.uniform(
             low=-self.framesize / 2 - self.border,
             high=self.framesize / 2 + self.border,
             size=ntracks,
@@ -121,7 +125,7 @@ class MonteCarloTrackOverlap:
         if diameter_dist is None:
             xyd[:, 2] = self.diameters_mean
         else:
-            xyd[:, 2] = _rng.choice(
+            xyd[:, 2] = self._rng.choice(
                 self.daxis, size=ntracks, replace=True, p=diameter_dist
             )
 

@@ -95,7 +95,7 @@ def single_diameter_overlap_fraction(
             "Chi can only be interpolated from Fn for monotonic curves, which are Fnum=-1, 1, or 4."
         )
 
-    file = data_dir / Path("cr39/F1-F4+.txt")
+    file = data_dir / Path("track_overlap/fcurves_single_diameter.txt")
     arr = np.loadtxt(file, delimiter="\t", skiprows=1)
     _x = arr[:, 1]
 
@@ -158,7 +158,7 @@ def mrn_overlap_fraction(
         Overlap fraction curve Fn(fluence).
     """
 
-    path = data_dir / Path("cr39/F1-F4+ special_distribution.h5")
+    path = data_dir / Path("track_overlap/fcurves_mrn_distribution.h5")
 
     # Choose the index of the Fnum to interpolate
     # Do this first so we only load the part of the file we need
