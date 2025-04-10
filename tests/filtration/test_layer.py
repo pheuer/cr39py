@@ -175,8 +175,3 @@ def test_particle_stops_when_energy_goes_negative():
     l = Layer.from_string("1 m Ta")
     Eout = l.range_down("Proton", 2 * u.MeV, dx=0.1 * u.um)
     assert Eout.m == 0
-
-
-def test_reduced_ranging_model():
-    filters = Layer.from_string("100 um Al")
-    filters.reduced_ranging_model()

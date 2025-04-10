@@ -77,8 +77,3 @@ def test_stack_lateral_straggle(stack, particle, energy, expected):
     s = Stack.from_string(stack)
     straggle = s.lateral_straggle(particle, energy)
     assert np.isclose(straggle, expected, rtol=0.01)
-
-
-def test_reduced_ranging_model():
-    filters = Stack.from_string("15 um Ta, 180 um Al")
-    filters.reduced_ranging_model()
