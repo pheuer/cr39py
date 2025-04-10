@@ -13,7 +13,7 @@ from cr39py.models.response import TwoParameterModel
 
 class EtchTimeOptimizer:
     """
-    Simulates the development of the diameter distribution with etch time to identify the optimal etch time.
+    Simulates the development of the MRN diameter distribution with etch time to identify the optimal etch time.
 
     Parameters
     ----------
@@ -135,16 +135,16 @@ class EtchTimeOptimizer:
         Parameters
         ----------
         etch_time_range : tuple, optional
-            Etch time range in minutes. By default (2*60, 6*60).
+            Etch time range in minutes.
 
         diameter_zone : tuple, optional
-            Diameter range in which to maximize the signal, in um. By default (2,10)
+            Diameter range in which to maximize the signal, in um.
 
         overlap_max : float, optional
-            Maximum track overlap fraction (1-F1) allowed. By default 0.1.
+            Maximum track overlap fraction (1-F1) allowed.
 
         plot : bool, optional
-            If True, plot the signal vs etch time. By default False.
+            If True, plot the signal vs etch time.
         """
 
         def signal(diameters, diameter_zone):

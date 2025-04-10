@@ -7,9 +7,37 @@ from matplotlib.patches import Circle, Rectangle
 
 
 class MonteCarloTrackOverlap:
+    """
+    A Monte-Carlo (MC) simulation to calculate the fraction of overlapped tracks on CR-39.
+
+    The simulation covers a single microscope 'frame' of the CR-39 scan, as well as a border region to avoid edge effects.
+    Tracks in the border region can overlap tracks in the domain, but are otherwise not counted in the output.
+
+    Parameters
+    ----------
+    framesize : float, optional
+        Size of the CR-39 frame is (framesize, framesize) in um.
+    border : float, optional
+        The thickness of the border region in um. The border should be slightly larger than the
+        largest track diameter to avoid edge effects.
+    diameters_mean : float, optional
+        The mean diameter of the tracks in um.
+    diameters_std : float, optional
+        The standard deviation of the track diameters in um. The default is 0 um, in which case all tracks
+        are set to the mean diameter.
+    daxis : np.ndarray, optional
+        The array of diameters to use for the diameter distribution, in um.
+    diameter_distribution : np.ndarray, optional
+        The probability distribution of diameters to use for the simulation, over the diameters in ``daxis``.
+        If not provided, a Gaussian distribution centered at ``diameters_mean`` with standard deviation ``diameters_std`` will be used.
+    random_seed : int, optional
+        The seed for the random number generator. If not provided, a random seed will be used.
+        This is useful for reproducibility of the simulation results.
+    """
+
     def __init__(
         self,
-        framesize: float = 300,
+        framesize: float = 600,
         border: float = 25,
         diameters_mean: float = 10,
         diameters_std: float = 0,
@@ -17,33 +45,6 @@ class MonteCarloTrackOverlap:
         diameter_distribution=None,
         random_seed=None,
     ) -> None:
-        """
-        A Monte-Carlo (MC) simulation to calculate the fraction of overlapped tracks on CR-39.
-
-        The simulation covers a single microscope 'frame' of the CR-39 scan, as well as a border region to avoid edge effects.
-        Tracks in the border region can overlap tracks in the domain, but are otherwise not counted in the output.
-
-        Parameters
-        ----------
-        framesize : float, optional
-            Size of the CR-39 frame is (framesize, framesize) in um. The default is 300 um.
-        border : float, optional
-            The thickness of the border region in um. The default is 25 um.
-        diameters_mean : float, optional
-            The mean diameter of the tracks in um. The default is 10 um.
-        diameters_std : float, optional
-            The standard deviation of the track diameters in um. The default is 0 um, in which case all tracks
-            are set to the mean diameter.
-        daxis : np.ndarray, optional
-            The array of diameters to use for the diameter distribution, in um. The default is np.arange(0.5, 20, 0.025).
-        diameter_distribution : np.ndarray, optional
-            The probability distribution of diameters to use for the simulation, over the diameters in ``daxis``.
-            If not provided, a Gaussian distribution centered at ``diameters_mean`` with standard deviation ``diameters_std`` will be used.
-        random_seed : int, optional
-            The seed for the random number generator. If not provided, a random seed will be used.
-            This is useful for reproducibility of the simulation results.
-
-        """
 
         self.framesize = framesize
         self.border = border

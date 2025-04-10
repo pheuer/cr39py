@@ -1,4 +1,12 @@
-"""The `~cr39py.etch.overlap` module contains tools for calculating track overlap probabilities."""
+"""
+The `~cr39py.etch.overlap` module contains tools for calculating track overlap probabilities.
+
+Fn is the track overlap curve for Fnum ``n``, where F1 is the number of tracks with no overlaps, F2 is the number of tracks with one overlap, etc.
+This numbering is chosen to be consistent with the definition of Fnum in :cite:t:`Zylstra2012new`. Note that the definition of these "f-curves" in cr39py
+is slightly different from the one in :cite:t:`Zylstra2012new`, where tracks in a cluster of three tracks,
+each of which overlap one of the others, are assigned F=3, rather than F=2.
+
+"""
 
 from pathlib import Path
 
@@ -57,11 +65,6 @@ def single_diameter_overlap_fraction(
 
     :math:`\chi=\eta \pi \bar{D}^2` is defined in :cite:t:`Zylstra2012new` for fluence :math:`\eta` and
     average track diameter :math:`\bar{D}`.
-
-    Fn is the track overlap curve for Fnum ``n``, where F1 is the number of tracks with no overlaps, F2 is the number of tracks with one overlap, etc.
-    This definition is slightly different from the one in :cite:t:`Zylstra2012new`, where tracks in a cluster of three tracks,
-    each of which overlap one of the others, are assigned F=3, rather than F=2.
-
 
     Parameters
     ----------
@@ -128,10 +131,6 @@ def mrn_overlap_fraction(
 
     These curves are calculated for tracks with a the Modified Reciprocal Normal (MRN) track
     distribution, characterized by parameters ``maxd`` and ``sigma``.
-
-    Fn is the track overlap curve for Fnum ``n``, where F1 is the number of tracks with no overlaps, F2 is the number of tracks with one overlap, etc.
-    This definition is slightly different from the one in :cite:t:`Zylstra2012new`, where tracks in a cluster of three tracks,
-    each of which overlap one of the others, are assigned F=3, rather than F=2.
 
     Parameters
     ----------

@@ -43,6 +43,7 @@ autoapi_type = ["python"]
 autoapi_member_order = "bysource"
 autoapi_options = [
     "members",
+    "inherited-members",
     "undoc-members",
     "show-module-summary",
     "special-members",

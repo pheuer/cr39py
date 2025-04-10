@@ -38,11 +38,11 @@ class LayerLike:
         The model is:
 
         .. math::
+
             E_{out}(E_{in})= \begin{cases}
                 a(E_{in}-E_0)^b & \text{if } E_{in} \geq E_0 \\
                 \text{NaN} & \text{if } E_{in} < E_0 \\
             \end{cases}
-
 
         This model is accurate for particles that exit the layer or stack with energies
         close to eout_cutoff.
