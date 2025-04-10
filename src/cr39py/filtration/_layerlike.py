@@ -98,6 +98,9 @@ class LayerLike:
         _model = lambda x, a, n: _eout_model(x, emin, a, n)
         popt, pcov = curve_fit(_model, e_in, e_out, p0=[1, 0.6])
 
+        coeff = [emin, *popt]
+        eout_model = lambda e: _eout_model(e.m_as(u.MeV), emin, *popt) * u.MeV
+
         if plot:
             fig, ax = plt.subplots()
             ax.set_xlabel("E_in (MeV)")
@@ -108,12 +111,10 @@ class LayerLike:
             ax.set_title(f"Eout={popt[0]:.2f}(Ein - {emin:.2f})^{popt[1]:.2f}")
             ax.plot(
                 ein_axis,
-                _model(ein_axis * u.MeV, *popt).m_as(u.MeV),
+                eout_model(ein_axis * u.MeV).m_as(u.MeV),
                 label="Fit",
                 color="C1",
             )
             ax.legend(loc="upper left")
 
-        coeff = [emin, *popt]
-        eout_model = lambda e: _model(e.m_as(u.MeV), *popt) * u.MeV
         return coeff, eout_model
