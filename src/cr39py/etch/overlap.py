@@ -202,7 +202,8 @@ def mrn_overlap_fraction(
         data,
         xi,
         method="linear",
-        bounds_error=True,
+        fill_value=None,  # linear extrapolate outside bounds
+        bounds_error=False,
     )
 
     return Farr
